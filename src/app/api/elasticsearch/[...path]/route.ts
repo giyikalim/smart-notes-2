@@ -1,84 +1,79 @@
 // app/api/elasticsearch/[...path]/route.ts
-import { Client } from "@elastic/elasticsearch";
 import { NextRequest, NextResponse } from "next/server";
 
-// Server-side Elasticsearch client
-const elasticClient = new Client({
-  node: process.env.ELASTICSEARCH_URL!,
-  auth: {
-    username: process.env.ELASTICSEARCH_USERNAME!,
-    password: process.env.ELASTICSEARCH_PASSWORD!,
-  },
-  tls: {
-    rejectUnauthorized: false,
-  },
-});
+const ELASTICSEARCH_URL = process.env.ELASTICSEARCH_URL!;
+const ELASTICSEARCH_API_KEY = process.env.NGINX_ELASTICSEARCH_API_KEY!;
 
-// Proxy tüm Elasticsearch isteklerini
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> } // ✅ params is Promise
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
-  const resolvedParams = await params; // ✅ Await the params
+  const resolvedParams = await params;
   return handleRequest(request, resolvedParams, "GET");
 }
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> } // ✅ params is Promise
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
-  const resolvedParams = await params; // ✅ Await the params
+  const resolvedParams = await params;
   return handleRequest(request, resolvedParams, "POST");
 }
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> } // ✅ params is Promise
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
-  const resolvedParams = await params; // ✅ Await the params
+  const resolvedParams = await params;
   return handleRequest(request, resolvedParams, "PUT");
 }
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> } // ✅ params is Promise
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
-  const resolvedParams = await params; // ✅ Await the params
+  const resolvedParams = await params;
   return handleRequest(request, resolvedParams, "DELETE");
 }
 
 async function handleRequest(
   request: NextRequest,
-  params: { path: string[] }, // ✅ Already resolved params
+  params: { path: string[] },
   method: string
 ) {
   try {
     const path = params.path.join("/");
-    const searchParams = Object.fromEntries(request.nextUrl.searchParams);
+    const searchParams = request.nextUrl.search; // keeps the ?query=string
 
-    let body;
+    let body: string | undefined;
     if (method === "POST" || method === "PUT") {
       try {
-        body = await request.json();
+        body = JSON.stringify(await request.json());
       } catch {
         body = undefined;
       }
     }
 
-    // Elasticsearch'e proxy yap
-    const response = await elasticClient.transport.request({
-      method,
-      path: `/${path}`,
-      querystring: searchParams,
-      body,
-    });
+    const response = await fetch(
+      `${ELASTICSEARCH_URL}/${path}${searchParams}`,
+      {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          "X-API-Key": ELASTICSEARCH_API_KEY,
+        },
+        body,
+      }
+    );
 
-    return NextResponse.json(response);
+    const data = await response.json();
+
+    return NextResponse.json(data, { status: response.status });
   } catch (error: any) {
     console.error("Elasticsearch proxy error:", error);
     return NextResponse.json(
       { error: error.message || "Elasticsearch error" },
-      { status: error.statusCode || 500 }
+      { status: 500 }
     );
   }
 }
