@@ -130,7 +130,7 @@ export default function NoteList({ searchQuery = "" }: NoteListProps) {
 
   const handleEditNote = (noteId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    router.push(`/notes/${noteId}?edit=true`);
+    router.push(`/notes/${noteId}/edit`);
   };
 
   const formatDate = (dateString: string) => {

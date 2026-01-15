@@ -13,11 +13,9 @@ export default function AuthCallbackPage() {
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
-        // URL'deki hash fragment'ını al
         const hash = window.location.hash;
 
         if (hash) {
-          // Hash'i parse et (Supabase v2 için yeni yöntem)
           const params = new URLSearchParams(hash.substring(1));
           const accessToken = params.get("access_token");
           const refreshToken = params.get("refresh_token");
@@ -29,7 +27,6 @@ export default function AuthCallbackPage() {
           }
 
           if (accessToken && refreshToken) {
-            // Session'ı set et
             const {
               data: { session },
               error: sessionError,
@@ -49,7 +46,6 @@ export default function AuthCallbackPage() {
           }
         }
 
-        // Regular OAuth callback (hash yoksa)
         const {
           data: { session },
           error: sessionError,
@@ -64,31 +60,47 @@ export default function AuthCallbackPage() {
         } else {
           setError("No session found. Please try again.");
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const errorMessage =
+          err instanceof Error ? err.message : "Authentication failed";
         console.error("Auth callback error:", err);
-        setError(err.message || "Authentication failed");
+        setError(errorMessage);
 
-        // 5 saniye sonra login'e geri dön
         setTimeout(() => {
           router.push("/login");
         }, 5000);
       }
     };
 
-    // Helper function to handle session
     const handleSession = async (session: Session) => {
-      // Profile oluştur/güncelle
       try {
-        const { error: profileError } = { error: "" };
+        const user = session.user;
+
+        const { error: profileError } = await (supabase as any)
+          .from("profiles")
+          .upsert(
+            {
+              id: user.id,
+              email: user.email!,
+              full_name:
+                user.user_metadata?.full_name ||
+                user.user_metadata?.name ||
+                null,
+              avatar_url:
+                user.user_metadata?.avatar_url ||
+                user.user_metadata?.picture ||
+                null,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "id" }
+          );
 
         if (profileError) {
-          console.error("Profile error:", profileError);
+          console.error("Profile upsert error:", profileError);
         }
       } catch (profileError) {
         console.error("Profile error (non-critical):", profileError);
       }
-
-      // Dashboard'a yönlendir
       router.push("/dashboard");
     };
 

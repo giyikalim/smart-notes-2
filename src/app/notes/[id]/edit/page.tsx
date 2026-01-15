@@ -341,7 +341,7 @@ export default function FullscreenEditPage() {
     ) {
       return;
     }
-    router.push(`/notes/${noteId}`);
+    router.back();
   };
 
   // Kısayol tuşları

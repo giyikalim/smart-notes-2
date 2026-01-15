@@ -105,12 +105,13 @@ export default function NoteDetailPage() {
           <p className="text-gray-600 dark:text-gray-400 mb-8">
             Bu not silinmiş olabilir veya erişim izniniz yok.
           </p>
-          <Link
-            href="/dashboard"
+
+          <button
+            onClick={() => router.push("/dashboard")}
             className="inline-flex items-center px-6 py-3 bg-blue-600 dark:bg-blue-700 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
           >
             ← Notlarıma Dön
-          </Link>
+          </button>
         </div>
       </div>
     );

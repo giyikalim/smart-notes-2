@@ -1005,15 +1005,10 @@ class ElasticsearchNoteAPI {
     limit = 5
   ): Promise<Note[]> {
     try {
-      const note = await this.getNoteById(noteId);
-      if (!note) return [];
+      const sourceNote = await this.getNoteById(noteId);
+      if (!sourceNote) return [];
 
-      // Notun içeriğinden önemli terimleri çıkar
-      const importantTerms = await this.extractImportantTerms(note.content);
-      if (importantTerms.length === 0) {
-        // Anahtar kelimeleri kullan
-        return [];
-      }
+      const elasticId = sourceNote._id || noteId;
 
       const response = await this.request<{
         hits: {
@@ -1025,183 +1020,63 @@ class ElasticsearchNoteAPI {
           query: {
             bool: {
               must: [{ term: { userId } }],
-              must_not: [{ term: { _id: noteId } }],
+              must_not: [{ ids: { values: [elasticId] } }],
               should: [
-                // İçerik benzerliği
                 {
-                  match: {
-                    content: {
-                      query: importantTerms.join(" "),
-                      minimum_should_match: "30%",
-                      boost: 3.0,
-                    },
+                  more_like_this: {
+                    fields: ["content", "title", "summary"],
+                    like: [
+                      {
+                        _index: "notes",
+                        _id: elasticId,
+                      },
+                    ],
+                    min_term_freq: 1,
+                    min_doc_freq: 1,
+                    max_query_terms: 25,
+                    minimum_should_match: "20%",
+                    boost: 2.0,
                   },
                 },
-                // Başlık benzerliği
                 {
-                  match: {
-                    title: {
-                      query: note.title,
-                      fuzziness: "AUTO",
-                      boost: 2.0,
-                    },
+                  terms: {
+                    "keywords.keyword": sourceNote.keywords.slice(0, 10),
+                    boost: 1.5,
                   },
                 },
-                // Anahtar kelime benzerliği
-                ...note.keywords.slice(0, 5).map((keyword) => ({
-                  match: {
-                    keywords: {
-                      query: keyword,
-                      boost: 1.5,
-                    },
-                  },
-                })),
               ],
               filter: [
                 { term: { isExpired: false } },
-                {
-                  range: {
-                    expiresAt: {
-                      gte: "now",
-                    },
-                  },
-                },
+                { range: { expiresAt: { gte: "now" } } },
               ],
               minimum_should_match: 1,
             },
           },
+          // 👇 EXPLICIT SORT: highest score first
+          sort: [{ _score: { order: "desc" } }],
           size: limit,
+          _source: true,
         }),
       });
 
+      if (response.hits.hits.length === 0) {
+        return [];
+      }
+
+      // Max score is first result (most similar)
+      const maxScore = response.hits.hits[0]._score || 1;
+
+      // Results are already sorted: most similar → least similar
       return response.hits.hits.map((hit) => ({
         ...hit._source,
         _id: hit._id,
-        similarityScore: this.calculateSimilarityScore(
-          note,
-          hit._source,
-          hit._score
-        ),
+        // Normalized score: 1.0 = most similar, 0.x = less similar
+        similarityScore: Math.round((hit._score / maxScore) * 100) / 100,
       }));
     } catch (error) {
-      console.error("İçerik bazlı benzer notlar getirilirken hata:", error);
+      console.error("Error finding similar notes:", error);
       return [];
     }
-  }
-
-  private async extractImportantTerms(content: string): Promise<string[]> {
-    // Basit TF-IDF benzeri önemli terim çıkarımı
-    const words = content
-      .toLowerCase()
-      .replace(/[^\w\sğüşıöçĞÜŞİÖÇ]/g, " ")
-      .split(/\s+/)
-      .filter((word) => word.length > 3);
-
-    const stopWords = new Set([
-      "ve",
-      "ile",
-      "bir",
-      "bu",
-      "şu",
-      "için",
-      "ama",
-      "fakat",
-      "ancak",
-      "veya",
-      "gibi",
-      "kadar",
-      "de",
-      "da",
-      "ki",
-    ]);
-
-    const wordFrequency: Record<string, number> = {};
-    words.forEach((word) => {
-      if (!stopWords.has(word)) {
-        wordFrequency[word] = (wordFrequency[word] || 0) + 1;
-      }
-    });
-
-    // En sık geçen 10 terim
-    return Object.entries(wordFrequency)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 10)
-      .map(([word]) => word);
-  }
-
-  private calculateSimilarityScore(
-    sourceNote: Note,
-    targetNote: Note,
-    elasticScore: number
-  ): number {
-    let score = elasticScore;
-
-    // Başlık benzerliği
-    const titleSimilarity = this.calculateStringSimilarity(
-      sourceNote.title.toLowerCase(),
-      targetNote.title.toLowerCase()
-    );
-    score += titleSimilarity * 0.3;
-
-    // Anahtar kelime overlap'ı
-    const sourceKeywords = new Set(sourceNote.keywords);
-    const targetKeywords = new Set(targetNote.keywords);
-    const keywordOverlap = this.calculateSetOverlap(
-      sourceKeywords,
-      targetKeywords
-    );
-    score += keywordOverlap * 0.2;
-
-    // Dil benzerliği
-    if (sourceNote.metadata?.language === targetNote.metadata?.language) {
-      score += 0.1;
-    }
-
-    // Normalize et (0-1 arası)
-    return Math.min(1, score / 5);
-  }
-
-  private calculateStringSimilarity(str1: string, str2: string): number {
-    const longer = str1.length > str2.length ? str1 : str2;
-    const shorter = str1.length > str2.length ? str2 : str1;
-
-    if (longer.length === 0) return 1.0;
-
-    return (longer.length - this.editDistance(longer, shorter)) / longer.length;
-  }
-
-  private editDistance(s1: string, s2: string): number {
-    s1 = s1.toLowerCase();
-    s2 = s2.toLowerCase();
-
-    const costs = [];
-    for (let i = 0; i <= s1.length; i++) {
-      let lastValue = i;
-      for (let j = 0; j <= s2.length; j++) {
-        if (i === 0) {
-          costs[j] = j;
-        } else {
-          if (j > 0) {
-            let newValue = costs[j - 1];
-            if (s1.charAt(i - 1) !== s2.charAt(j - 1)) {
-              newValue = Math.min(Math.min(newValue, lastValue), costs[j]) + 1;
-            }
-            costs[j - 1] = lastValue;
-            lastValue = newValue;
-          }
-        }
-      }
-      if (i > 0) costs[s2.length] = lastValue;
-    }
-    return costs[s2.length];
-  }
-
-  private calculateSetOverlap<T>(set1: Set<T>, set2: Set<T>): number {
-    const intersection = new Set([...set1].filter((x) => set2.has(x)));
-    const union = new Set([...set1, ...set2]);
-
-    if (union.size === 0) return 0;
-    return intersection.size / union.size;
   }
 
   async advancedSearch(options: AdvancedSearchOptions): Promise<{
