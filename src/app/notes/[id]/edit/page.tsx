@@ -3,13 +3,21 @@
 import AIQuickActions from "@/components/ai/AIQuickActions";
 import {
   AI_WORKERS,
+  getAICategory,
   getAIEdit,
   getAIOrganize,
   getAISuggestion,
 } from "@/lib/ai-helper";
 import { useAuth } from "@/lib/auth";
+import {
+  CATEGORIES,
+  getCategoryColors,
+  getCategoryName,
+} from "@/lib/categories";
 import { noteAPI } from "@/lib/elasticsearch-client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { FolderOpen, Loader2, RefreshCw, Tag } from "lucide-react";
+import { useLocale } from "next-intl";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
@@ -20,6 +28,7 @@ export default function FullscreenEditPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const noteId = params.id as string;
+  const locale = useLocale();
 
   const [content, setContent] = useState("");
   const [title, setTitle] = useState("");
@@ -28,6 +37,12 @@ export default function FullscreenEditPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [showAnalysis, setShowAnalysis] = useState(true);
   const [wordCount, setWordCount] = useState(0);
+
+  // Category state
+  const [category, setCategory] = useState<string | undefined>();
+  const [subcategory, setSubcategory] = useState<string | undefined>();
+  const [isCategoryLoading, setIsCategoryLoading] = useState(false);
+  const [categoryModified, setCategoryModified] = useState(false);
 
   // AI özellikleri
   const [aiSuggestions, setAiSuggestions] = useState<{
@@ -72,6 +87,12 @@ export default function FullscreenEditPage() {
         note.content.split(/\s+/).filter((w) => w.length > 0).length
       );
 
+      // Load category
+      if (note.category) {
+        setCategory(note.category);
+        setSubcategory(note.subcategory);
+      }
+
       // Eğer AI metadata varsa, AI önerilerini yükle
       if (note.metadata?.aiMetadata) {
         setAiSuggestions((s) => ({
@@ -83,6 +104,34 @@ export default function FullscreenEditPage() {
       }
     }
   }, [note]);
+
+  // Regenerate category function
+  const regenerateCategory = async () => {
+    if (content.length < 20) {
+      toast.error("En az 20 karakter yazın");
+      return;
+    }
+
+    setIsCategoryLoading(true);
+    try {
+      const result = await getAICategory(summary || content);
+      if (result.success && result.data) {
+        setCategory(result.data.category);
+        setSubcategory(result.data.subcategory);
+        setCategoryModified(true);
+        toast.success(
+          `📁 Kategori: ${getCategoryName(result.data.category, locale)}`
+        );
+      } else {
+        toast.error("Kategori oluşturma başarısız");
+      }
+    } catch (error) {
+      console.error("Category regeneration error:", error);
+      toast.error("Kategori servisi kullanılamıyor");
+    } finally {
+      setIsCategoryLoading(false);
+    }
+  };
 
   // Kelime sayısını güncelle
   useEffect(() => {
@@ -309,7 +358,30 @@ export default function FullscreenEditPage() {
         title: title || updates.title,
         summary: summary || updates.summary,
         isEditedByUser: true,
+        category,
+        subcategory,
       });
+
+      // Update category if modified or if note doesn't have category yet
+      if (categoryModified || (category && !note?.category)) {
+        await noteAPI.updateNoteCategory(
+          noteId,
+          category!,
+          subcategory!,
+          "user"
+        );
+      } else if (!note?.category && content.length >= 20) {
+        // Generate category for notes that don't have any
+        const catResult = await getAICategory(summary || content);
+        if (catResult.success && catResult.data) {
+          await noteAPI.updateNoteCategory(
+            noteId,
+            catResult.data.category,
+            catResult.data.subcategory,
+            "ai"
+          );
+        }
+      }
 
       toast.success("Not Elasticsearch'e kaydedildi!", {
         icon: aiSuggestions ? "🤖" : "✏️",
@@ -846,6 +918,67 @@ export default function FullscreenEditPage() {
                       </div>
                     </div>
                   </div>
+                </div>
+
+                {/* Category Section */}
+                <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 flex items-center gap-2">
+                      <FolderOpen className="w-4 h-4 text-purple-500" />
+                      Kategori
+                    </h3>
+                    <button
+                      onClick={regenerateCategory}
+                      disabled={isCategoryLoading || content.length < 20}
+                      className="flex items-center gap-1 text-xs px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isCategoryLoading ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-3 h-3" />
+                      )}
+                      Yeniden Oluştur
+                    </button>
+                  </div>
+
+                  {category ? (
+                    <div className="space-y-3">
+                      {/* Category display */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span
+                          className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border ${getCategoryColors(category).border} ${getCategoryColors(category).bg} ${getCategoryColors(category).text}`}
+                        >
+                          <span>{CATEGORIES[category]?.icon}</span>
+                          {getCategoryName(category, locale)}
+                        </span>
+
+                        {subcategory && (
+                          <>
+                            <span className="text-gray-400">→</span>
+                            <span className="inline-flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+                              <Tag className="w-3 h-3" />
+                              {getCategoryName(subcategory, locale)}
+                            </span>
+                          </>
+                        )}
+                      </div>
+
+                      {categoryModified && (
+                        <div className="text-xs text-amber-600 dark:text-amber-400">
+                          ⚠️ Kategori değiştirildi - kaydetmeyi unutmayın
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-center py-4">
+                      <FolderOpen className="w-8 h-8 mx-auto text-gray-300 dark:text-gray-600 mb-2" />
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {content.length < 20
+                          ? "En az 20 karakter yazın"
+                          : "Kategori oluşturmak için butona tıklayın"}
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Shortcuts */}

@@ -149,5 +149,28 @@
     "thisWeek": "Bu Hafta",
     "categories": "Kategoriler",
     "expiringSoon": "Yakında Sona Erecek"
+  },
+  "browse": {
+    "title": "Notlara Göz At",
+    "subtitle": "AI tarafından oluşturulan kategorilere göre notlarınızı keşfedin",
+    "totalNotes": "Toplam Not",
+    "categories": "Kategoriler",
+    "tagged": "Etiketli",
+    "recentlyTagged": "Bu Hafta",
+    "allCategories": "Tüm Kategoriler",
+    "mainCategories": "Ana Kategoriler",
+    "subCategories": "Alt Kategoriler",
+    "noCategories": "Kategori bulunamadı",
+    "startTagging": "Organize etmeye başlamak için not oluşturun",
+    "selectCategory": "Notları görmek için bir kategori seçin",
+    "distribution": "Kategori Dağılımı",
+    "recentNotes": "Son Etiketlenen Notlar",
+    "notesIn": "Notlar:",
+    "note": "not",
+    "notes": "not",
+    "noNotes": "Bu kategoride not yok",
+    "categoryStats": "Kategori İstatistikleri",
+    "notesInCategory": "Notlar",
+    "depth": "Derinlik"
   }
 }

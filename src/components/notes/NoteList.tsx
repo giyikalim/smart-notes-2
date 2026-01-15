@@ -394,8 +394,20 @@ export default function NoteList({ searchQuery = "" }: NoteListProps) {
 
                     {/* Tags and Status */}
                     <div className="flex flex-wrap items-center gap-2 mb-3">
-                      {/* Keywords/Tags */}
-                      {note.keywords && note.keywords.length > 0 && (
+                      {/* Category Badge */}
+                      {note.category ? (
+                        <div className="flex items-center gap-1">
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                            <Tag className="w-3 h-3 mr-1" />
+                            {note.category.replace(/-/g, " ")}
+                          </span>
+                          {note.subcategory && (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-800">
+                              {note.subcategory.replace(/-/g, " ")}
+                            </span>
+                          )}
+                        </div>
+                      ) : note.keywords && note.keywords.length > 0 ? (
                         <div className="flex flex-wrap gap-1">
                           {note.keywords.slice(0, 3).map((keyword, idx) => (
                             <span
@@ -412,7 +424,7 @@ export default function NoteList({ searchQuery = "" }: NoteListProps) {
                             </span>
                           )}
                         </div>
-                      )}
+                      ) : null}
 
                       {/* Expire Status */}
                       <span

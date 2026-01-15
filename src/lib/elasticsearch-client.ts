@@ -1,7 +1,7 @@
 // lib/elasticsearch-client.ts - Browser/Edge için
 const API_BASE_URL = "/api/elasticsearch";
 
-// In lib/elasticsearch-client.ts, update the Note interface:
+// Note interface with predefined category system
 export interface Note {
   _id?: string;
   id: string;
@@ -9,13 +9,22 @@ export interface Note {
   title: string;
   content: string;
   summary: string;
-  keywords: string[];
+  keywords: string[];  // Kept for search functionality
   createdAt: string;
   updatedAt?: string;
   expiresAt: string;
   relevanceScore?: number;
   similarityScore?: number;
   isExpired: boolean;
+  
+  // Predefined Category System (2-level hierarchy)
+  category?: string;      // Main category: "tech-production", "work-career", etc.
+  subcategory?: string;   // Subcategory: "code-snippet", "meeting-minutes", etc.
+  
+  // Category metadata
+  categoryAssignedAt?: string;        // When category was assigned
+  categoryAssignedBy?: 'ai' | 'user'; // Who assigned the category
+  
   metadata: {
     wordCount: number;
     language: string;
@@ -89,6 +98,28 @@ export interface CreateNoteOptions {
     language: string;
     wordCount: number;
   };
+  // Category data from AI
+  categoryData?: {
+    category: string;
+    subcategory: string;
+  };
+}
+
+// Category aggregation result for browse page
+export interface CategoryAggregation {
+  category: string;
+  count: number;
+  subcategories?: { subcategory: string; count: number }[];
+}
+
+// Browse page statistics
+export interface BrowseStatistics {
+  totalNotes: number;
+  totalCategories: number;
+  notesWithCategory: number;
+  coveragePercentage: number;
+  topCategories: CategoryAggregation[];
+  recentlyCategorized: number;
 }
 
 export interface UpdateNoteOptions {
@@ -97,6 +128,8 @@ export interface UpdateNoteOptions {
   summary?: string;
   content?: string;
   isEditedByUser?: boolean;
+  category?: string;
+  subcategory?: string;
 }
 
 // Elasticsearch için gelişmiş API client
@@ -133,6 +166,7 @@ class ElasticsearchNoteAPI {
       language = "tr",
       wordCount,
       aiSuggestions,
+      categoryData,
     } = options;
 
     // Expire tarihi (3 ay sonra)
@@ -181,6 +215,13 @@ class ElasticsearchNoteAPI {
       createdAt: new Date().toISOString(),
       expiresAt: expiresAt.toISOString(),
       isExpired: false,
+      // Category data
+      ...(categoryData && {
+        category: categoryData.category,
+        subcategory: categoryData.subcategory,
+        categoryAssignedAt: new Date().toISOString(),
+        categoryAssignedBy: 'ai' as const,
+      }),
       metadata: {
         wordCount: finalWordCount,
         language: finalLanguage,
@@ -1268,6 +1309,298 @@ class ElasticsearchNoteAPI {
             count: b.doc_count,
           })),
       },
+    };
+  }
+
+  // ==================== CATEGORY METHODS ====================
+
+  /**
+   * Get browse statistics for the user
+   */
+  async getBrowseStatistics(userId: string): Promise<BrowseStatistics> {
+    const response = await this.request<{
+      hits: { total: { value: number } };
+      aggregations: {
+        notes_with_category: { doc_count: number };
+        categories: { buckets: Array<{ key: string; doc_count: number }> };
+        recently_categorized: { doc_count: number };
+      };
+    }>("/notes/_search", {
+      method: "POST",
+      body: JSON.stringify({
+        size: 0,
+        query: {
+          bool: {
+            must: [{ term: { userId } }],
+            filter: [{ term: { isExpired: false } }],
+          },
+        },
+        aggs: {
+          notes_with_category: {
+            filter: { exists: { field: "category" } },
+          },
+          categories: {
+            terms: {
+              field: "category",
+              size: 20,
+            },
+          },
+          recently_categorized: {
+            filter: {
+              bool: {
+                must: [
+                  { exists: { field: "category" } },
+                  {
+                    range: {
+                      categoryAssignedAt: {
+                        gte: "now-7d",
+                      },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        },
+      }),
+    });
+
+    const totalNotes = response.hits.total.value;
+    const notesWithCategory = response.aggregations.notes_with_category.doc_count;
+    const totalCategories = response.aggregations.categories.buckets.length;
+
+    return {
+      totalNotes,
+      totalCategories,
+      notesWithCategory,
+      coveragePercentage: totalNotes > 0 ? Math.round((notesWithCategory / totalNotes) * 100) : 0,
+      topCategories: response.aggregations.categories.buckets.map((b) => ({
+        category: b.key,
+        count: b.doc_count,
+      })),
+      recentlyCategorized: response.aggregations.recently_categorized.doc_count,
+    };
+  }
+
+  /**
+   * Get all categories with their subcategory counts
+   */
+  async getCategoriesWithSubcategories(userId: string): Promise<CategoryAggregation[]> {
+    const response = await this.request<{
+      aggregations: {
+        categories: {
+          buckets: Array<{
+            key: string;
+            doc_count: number;
+            subcategories: {
+              buckets: Array<{ key: string; doc_count: number }>;
+            };
+          }>;
+        };
+      };
+    }>("/notes/_search", {
+      method: "POST",
+      body: JSON.stringify({
+        size: 0,
+        query: {
+          bool: {
+            must: [
+              { term: { userId } },
+              { exists: { field: "category" } },
+            ],
+            filter: [{ term: { isExpired: false } }],
+          },
+        },
+        aggs: {
+          categories: {
+            terms: {
+              field: "category",
+              size: 20,
+              order: { _count: "desc" },
+            },
+            aggs: {
+              subcategories: {
+                terms: {
+                  field: "subcategory",
+                  size: 20,
+                },
+              },
+            },
+          },
+        },
+      }),
+    });
+
+    return response.aggregations.categories.buckets.map((bucket) => ({
+      category: bucket.key,
+      count: bucket.doc_count,
+      subcategories: bucket.subcategories.buckets.map((sub) => ({
+        subcategory: sub.key,
+        count: sub.doc_count,
+      })),
+    }));
+  }
+
+  /**
+   * Get notes by category and optionally subcategory
+   */
+  async getNotesByCategory(
+    userId: string,
+    category: string,
+    subcategory?: string,
+    page = 1,
+    pageSize = 20
+  ): Promise<{ notes: Note[]; total: number }> {
+    const mustClauses: object[] = [
+      { term: { userId } },
+      { term: { category } },
+    ];
+
+    if (subcategory) {
+      mustClauses.push({ term: { subcategory } });
+    }
+
+    const from = (page - 1) * pageSize;
+
+    const response = await this.request<{
+      hits: {
+        total: { value: number };
+        hits: Array<{ _source: Note; _id: string }>;
+      };
+    }>("/notes/_search", {
+      method: "POST",
+      body: JSON.stringify({
+        query: {
+          bool: {
+            must: mustClauses,
+            filter: [{ term: { isExpired: false } }],
+          },
+        },
+        sort: [{ createdAt: { order: "desc" } }],
+        from,
+        size: pageSize,
+      }),
+    });
+
+    return {
+      notes: response.hits.hits.map((hit) => ({
+        ...hit._source,
+        _id: hit._id,
+      })),
+      total: response.hits.total.value,
+    };
+  }
+
+  /**
+   * Get subcategories for a specific category
+   */
+  async getSubcategoriesForCategory(
+    userId: string,
+    category: string
+  ): Promise<{ subcategory: string; count: number }[]> {
+    const response = await this.request<{
+      aggregations: {
+        subcategories: { buckets: Array<{ key: string; doc_count: number }> };
+      };
+    }>("/notes/_search", {
+      method: "POST",
+      body: JSON.stringify({
+        size: 0,
+        query: {
+          bool: {
+            must: [
+              { term: { userId } },
+              { term: { category } },
+            ],
+            filter: [{ term: { isExpired: false } }],
+          },
+        },
+        aggs: {
+          subcategories: {
+            terms: {
+              field: "subcategory",
+              size: 20,
+              order: { _count: "desc" },
+            },
+          },
+        },
+      }),
+    });
+
+    return response.aggregations.subcategories.buckets.map((b) => ({
+      subcategory: b.key,
+      count: b.doc_count,
+    }));
+  }
+
+  /**
+   * Update note category
+   */
+  async updateNoteCategory(
+    noteId: string,
+    category: string,
+    subcategory: string,
+    assignedBy: 'ai' | 'user' = 'user'
+  ): Promise<Note> {
+    const existingNote = await this.getNoteById(noteId);
+    if (!existingNote) {
+      throw new Error("Note not found");
+    }
+
+    const elasticId = existingNote._id || noteId;
+
+    const updates = {
+      category,
+      subcategory,
+      categoryAssignedAt: new Date().toISOString(),
+      categoryAssignedBy: assignedBy,
+    };
+
+    await this.request(`/notes/_update/${elasticId}`, {
+      method: "POST",
+      body: JSON.stringify({ doc: updates }),
+    });
+
+    return this.getNoteById(noteId) as Promise<Note>;
+  }
+
+  /**
+   * Get notes without category
+   */
+  async getNotesWithoutCategory(
+    userId: string,
+    page = 1,
+    pageSize = 50
+  ): Promise<{ notes: Note[]; total: number }> {
+    const from = (page - 1) * pageSize;
+
+    const response = await this.request<{
+      hits: {
+        total: { value: number };
+        hits: Array<{ _source: Note; _id: string }>;
+      };
+    }>("/notes/_search", {
+      method: "POST",
+      body: JSON.stringify({
+        query: {
+          bool: {
+            must: [{ term: { userId } }],
+            must_not: [{ exists: { field: "category" } }],
+            filter: [{ term: { isExpired: false } }],
+          },
+        },
+        sort: [{ createdAt: { order: "desc" } }],
+        from,
+        size: pageSize,
+      }),
+    });
+
+    return {
+      notes: response.hits.hits.map((hit) => ({
+        ...hit._source,
+        _id: hit._id,
+      })),
+      total: response.hits.total.value,
     };
   }
 }

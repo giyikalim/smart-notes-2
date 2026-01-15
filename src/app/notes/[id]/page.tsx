@@ -132,6 +132,10 @@ export default function NoteDetailPage() {
             <div>
               <Link
                 href="/dashboard"
+                onClick={(e) => {
+                  e.preventDefault();
+                  router.push("/dashboard");
+                }}
                 className="inline-flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 mb-2"
               >
                 <svg
@@ -346,6 +350,83 @@ export default function NoteDetailPage() {
 
           {/* Sidebar - Sağ (1/3) */}
           <div className="lg:col-span-1 space-y-6">
+            {/* Category Section */}
+            {note.category && (
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-2xl shadow-lg p-6 border border-purple-200 dark:border-purple-800">
+                <h3 className="text-sm font-medium text-purple-700 dark:text-purple-300 mb-3 flex items-center gap-2">
+                  <span>📁</span>
+                  Kategori
+                  <Link
+                    href={`/browse?category=${note.category}${note.subcategory ? `&subcategory=${note.subcategory}` : ""}`}
+                    className="ml-auto text-xs bg-purple-200 dark:bg-purple-800 px-2 py-0.5 rounded hover:bg-purple-300 dark:hover:bg-purple-700 transition-colors"
+                  >
+                    Kategoriye Git →
+                  </Link>
+                </h3>
+
+                {/* Category Path */}
+                <div className="flex items-center gap-2 mb-4">
+                  <Link
+                    href={`/browse?category=${note.category}`}
+                    className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-200 border border-purple-300 dark:border-purple-700 hover:shadow-md transition-all"
+                  >
+                    <span className="text-lg">
+                      {note.category === "tech-production"
+                        ? "💻"
+                        : note.category === "work-career"
+                          ? "💼"
+                          : note.category === "personal-growth"
+                            ? "🧠"
+                            : note.category === "projects-planning"
+                              ? "🗺️"
+                              : note.category === "finance-management"
+                                ? "💰"
+                                : note.category === "life-organization"
+                                  ? "🏡"
+                                  : note.category === "health-wellbeing"
+                                    ? "❤️"
+                                    : note.category === "log-archive"
+                                      ? "📝"
+                                      : "📁"}
+                    </span>
+                    <span className="font-medium capitalize">
+                      {note.category.replace(/-/g, " ")}
+                    </span>
+                  </Link>
+
+                  {note.subcategory && (
+                    <>
+                      <span className="text-gray-400">→</span>
+                      <Link
+                        href={`/browse?category=${note.category}&subcategory=${note.subcategory}`}
+                        className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-white/50 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all"
+                      >
+                        <span>🏷️</span>
+                        <span className="capitalize">
+                          {note.subcategory.replace(/-/g, " ")}
+                        </span>
+                      </Link>
+                    </>
+                  )}
+                </div>
+
+                {/* Category Metadata */}
+                {note.categoryAssignedAt && (
+                  <div className="pt-3 border-t border-purple-200 dark:border-purple-700 text-xs text-gray-500 dark:text-gray-400">
+                    <span className="font-medium">Kategorize:</span>{" "}
+                    {formatDate(note.categoryAssignedAt)}
+                    {note.categoryAssignedBy && (
+                      <span className="ml-2 px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900 rounded">
+                        {note.categoryAssignedBy === "ai"
+                          ? "🤖 AI"
+                          : "✏️ Manuel"}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Özet - İÇERİKTEN ÖNCE */}
             {note.summary && (
               <div className="mb-6 p-5 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">

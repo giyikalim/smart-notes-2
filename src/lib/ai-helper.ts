@@ -213,4 +213,47 @@ export const AI_WORKERS: AIWorker[] = [
     requiresText: true,
     minLength: 10,
   },
+  {
+    id: "tags",
+    name: "AI Etiket Oluşturucu",
+    description: "Otomatik hiyerarşik etiketler oluştur",
+    endpoint: "/api/ai/tags",
+    icon: "🏷️",
+    color: "from-purple-500 to-pink-500",
+    requiresText: true,
+    minLength: 20,
+  },
 ];
+
+// ==================== CATEGORY HELPERS ====================
+
+export interface AICategoryResult {
+  success: boolean;
+  data?: {
+    category: string;
+    subcategory: string;
+  };
+  error?: string;
+  timestamp?: string;
+}
+
+export async function getAICategory(text: string): Promise<AICategoryResult> {
+  try {
+    const response = await fetch("/api/ai/categorize", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ text }),
+    });
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error("AI Category error:", error);
+    return {
+      success: false,
+      error: "AI Category service is unavailable",
+    };
+  }
+}

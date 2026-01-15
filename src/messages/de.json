@@ -149,5 +149,28 @@
     "thisWeek": "Diese Woche",
     "categories": "Kategorien",
     "expiringSoon": "Läuft bald ab"
+  },
+  "browse": {
+    "title": "Notizen durchsuchen",
+    "subtitle": "Erkunden Sie Ihre Notizen nach KI-generierten Kategorien",
+    "totalNotes": "Gesamtnotizen",
+    "categories": "Kategorien",
+    "tagged": "Markiert",
+    "recentlyTagged": "Diese Woche",
+    "allCategories": "Alle Kategorien",
+    "mainCategories": "Hauptkategorien",
+    "subCategories": "Unterkategorien",
+    "noCategories": "Keine Kategorien gefunden",
+    "startTagging": "Erstellen Sie Notizen, um mit der Organisation zu beginnen",
+    "selectCategory": "Wählen Sie eine Kategorie, um Notizen anzuzeigen",
+    "distribution": "Kategorieverteilung",
+    "recentNotes": "Kürzlich markierte Notizen",
+    "notesIn": "Notizen in",
+    "note": "Notiz",
+    "notes": "Notizen",
+    "noNotes": "Keine Notizen in dieser Kategorie",
+    "categoryStats": "Kategoriestatistik",
+    "notesInCategory": "Notizen",
+    "depth": "Tiefe"
   }
 }

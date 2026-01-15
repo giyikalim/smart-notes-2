@@ -149,5 +149,28 @@
     "thisWeek": "This Week",
     "categories": "Categories",
     "expiringSoon": "Expiring Soon"
+  },
+  "browse": {
+    "title": "Browse Notes",
+    "subtitle": "Explore your notes by AI-generated categories",
+    "totalNotes": "Total Notes",
+    "categories": "Categories",
+    "tagged": "Tagged",
+    "recentlyTagged": "This Week",
+    "allCategories": "All Categories",
+    "mainCategories": "Main Categories",
+    "subCategories": "Sub Categories",
+    "noCategories": "No categories found",
+    "startTagging": "Create notes to start organizing",
+    "selectCategory": "Select a category to view notes",
+    "distribution": "Category Distribution",
+    "recentNotes": "Recent Tagged Notes",
+    "notesIn": "Notes in",
+    "note": "note",
+    "notes": "notes",
+    "noNotes": "No notes in this category",
+    "categoryStats": "Category Stats",
+    "notesInCategory": "Notes",
+    "depth": "Depth"
   }
 }

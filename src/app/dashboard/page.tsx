@@ -15,7 +15,7 @@ import {
   Note,
   noteAPI,
 } from "@/lib/elasticsearch-client";
-import { Menu, Rocket, Search, X } from "lucide-react";
+import { Layers, Menu, Rocket, Search, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -239,6 +239,16 @@ export default function DashboardPage() {
                   <div className="flex items-center justify-center gap-2">
                     <Rocket className="w-4 h-4" />
                     <span>{t("dashboard.discover")}</span>
+                  </div>
+                </Link>
+
+                <Link
+                  href="/browse"
+                  className="block w-full px-4 py-3 bg-gradient-to-r from-pink-500 to-rose-500 text-white text-center rounded-xl hover:from-pink-600 hover:to-rose-600 transition-all duration-200 font-medium shadow-sm hover:shadow-md active:scale-[0.98]"
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <Layers className="w-4 h-4" />
+                    <span>{t("browse.title") || "Browse Notes"}</span>
                   </div>
                 </Link>
               </div>
