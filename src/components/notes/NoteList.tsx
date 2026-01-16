@@ -46,7 +46,7 @@ const useInfiniteScroll = (callback: () => void) => {
           callback();
         }
       },
-      { threshold: 0.1 }
+      { threshold: 0.1 },
     );
 
     if (loadMoreRef.current) {
@@ -113,7 +113,7 @@ export default function NoteList({ searchQuery = "" }: NoteListProps) {
 
     if (
       !confirm(
-        "Bu notu silmek istediğinizden emin misiniz? Bu işlem geri alınamaz."
+        "Bu notu silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
       )
     ) {
       return;
@@ -152,7 +152,7 @@ export default function NoteList({ searchQuery = "" }: NoteListProps) {
     }
 
     const daysLeft = Math.ceil(
-      (new Date(expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+      (new Date(expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24),
     );
 
     if (daysLeft <= 0) {
@@ -428,12 +428,14 @@ export default function NoteList({ searchQuery = "" }: NoteListProps) {
                       ) : null}
 
                       {/* Image Badge */}
-                      {note.hasImages && note.imageCount && note.imageCount > 0 && (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-pink-50 dark:bg-pink-900/30 text-pink-700 dark:text-pink-300 border border-pink-200 dark:border-pink-800">
-                          <ImageIcon className="w-3 h-3 mr-1" />
-                          {note.imageCount}
-                        </span>
-                      )}
+                      {note.hasImages &&
+                        note.imageCount &&
+                        note.imageCount > 0 && (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-pink-50 dark:bg-pink-900/30 text-pink-700 dark:text-pink-300 border border-pink-200 dark:border-pink-800">
+                            <ImageIcon className="w-3 h-3 mr-1" />
+                            {note.imageCount}
+                          </span>
+                        )}
 
                       {/* Expire Status */}
                       <span

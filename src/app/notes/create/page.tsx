@@ -15,11 +15,14 @@ import {
 import { noteAPI, NoteImage } from "@/lib/elasticsearch-client";
 import {
   combineOcrTexts,
+  filterReferencedImages,
+  findOrphanedImages,
   getContentForAI,
   getSearchableContent,
+  getTotalContentLength,
   hasImages,
 } from "@/lib/image-processor";
-import { UploadedImage } from "@/lib/image-uploader";
+import { deleteImages, UploadedImage } from "@/lib/image-uploader";
 import debounce from "lodash/debounce";
 import {
   AlertCircle,
@@ -69,9 +72,10 @@ export default function CreateNotePage() {
       // Get clean text for AI analysis (no image placeholders, but include OCR)
       const ocrTexts = uploadedImages.map((img) => img.ocrText);
       const contentForAI = getContentForAI(text, ocrTexts);
-      const cleanText = getSearchableContent(text);
 
-      if (cleanText.length < 30) {
+      // Check total content length (text + OCR) for AI trigger
+      const totalLength = getTotalContentLength(text, ocrTexts);
+      if (totalLength < 30) {
         setAiSuggestions(null);
         setAiCategory(null);
         return;
@@ -128,8 +132,10 @@ export default function CreateNotePage() {
       setContent(newContent);
 
       const cleanText = getSearchableContent(newContent);
+      const ocrTexts = uploadedImages.map((img) => img.ocrText);
+      const totalLength = getTotalContentLength(newContent, ocrTexts);
 
-      if (cleanText.trim() && cleanText.length >= 30) {
+      if (cleanText.trim() && totalLength >= 30) {
         getAISuggestions(newContent);
       } else if (cleanText.trim()) {
         if (!userTitle) setUserTitle("");
@@ -143,7 +149,7 @@ export default function CreateNotePage() {
         setAiCategory(null);
       }
     },
-    [getAISuggestions, userTitle, userSummary],
+    [getAISuggestions, userTitle, userSummary, uploadedImages],
   );
 
   // Handle image upload from editor
@@ -191,9 +197,20 @@ export default function CreateNotePage() {
         aiSuggestions?.suggestedSummary ||
         cleanText.substring(0, 200) + (cleanText.length > 200 ? "..." : "");
 
-      // Build searchContent: only OCR text (no content duplication)
+      // Find images that are still referenced in content vs orphaned ones
+      const referencedImages = filterReferencedImages(content, uploadedImages);
+      const orphanedImages = findOrphanedImages(content, uploadedImages);
+
+      // Delete orphaned images from Supabase storage
+      if (orphanedImages.length > 0) {
+        const orphanedIds = orphanedImages.map((img) => img.id);
+        await deleteImages(user.id, orphanedIds);
+        console.log(`Deleted ${orphanedIds.length} orphaned images`);
+      }
+
+      // Build searchContent: only OCR text from referenced images
       const searchContent = combineOcrTexts(
-        uploadedImages.map((img) => img.ocrText),
+        referencedImages.map((img) => img.ocrText),
       );
 
       const note = await noteAPI.createNoteWithAIMetadata({
@@ -219,13 +236,13 @@ export default function CreateNotePage() {
                 subcategory: aiCategory.data.subcategory,
               }
             : undefined,
-        images: uploadedImages.length > 0 ? uploadedImages : undefined,
+        images: referencedImages.length > 0 ? referencedImages : undefined,
       });
 
       const isEdited = userTitle && userTitle !== aiSuggestions?.suggestedTitle;
 
       toast.success(
-        `📝 Not başarıyla ${isEdited ? "düzenlenerek " : ""}kaydedildi!${uploadedImages.length > 0 ? ` (${uploadedImages.length} resim)` : ""}`,
+        `📝 Not başarıyla ${isEdited ? "düzenlenerek " : ""}kaydedildi!${referencedImages.length > 0 ? ` (${referencedImages.length} resim)` : ""}`,
         { duration: 3000, icon: isEdited ? "✏️" : "🤖" },
       );
 
@@ -251,6 +268,10 @@ export default function CreateNotePage() {
     : null;
 
   const cleanTextLength = getSearchableContent(content).length;
+  const totalContentLength = getTotalContentLength(
+    content,
+    uploadedImages.map((img) => img.ocrText),
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 py-8">
@@ -426,10 +447,10 @@ export default function CreateNotePage() {
                 <span>{cleanTextLength} karakter</span>
                 <span>3 ay expire</span>
               </div>
-              {cleanTextLength < 30 && (
+              {totalContentLength < 30 && (
                 <span className="text-amber-600 dark:text-amber-400">
                   <AlertCircle className="w-4 h-4 inline mr-1" />
-                  AI analizi için en az 30 karakter
+                  AI analizi için en az 30 karakter (metin + OCR)
                 </span>
               )}
             </div>

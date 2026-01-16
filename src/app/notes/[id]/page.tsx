@@ -1,14 +1,14 @@
 "use client";
 
+import MarkdownRenderer from "@/components/editor/MarkdownRenderer";
 import { useAuth } from "@/lib/auth";
 import { Note, noteAPI } from "@/lib/elasticsearch-client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Image as ImageIcon } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import MarkdownRenderer from "@/components/editor/MarkdownRenderer";
-import { Image as ImageIcon } from "lucide-react";
 
 export default function NoteDetailPage() {
   const { user } = useAuth();
@@ -17,6 +17,7 @@ export default function NoteDetailPage() {
   const noteId = params.id as string;
   const [similarNotes, setSimilarNotes] = useState<Note[]>([]);
   const [isLoadingSimilar, setIsLoadingSimilar] = useState(false);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (noteId) {
@@ -52,7 +53,7 @@ export default function NoteDetailPage() {
   const handleDeleteNote = async () => {
     if (
       !confirm(
-        "Bu notu silmek istediğinize emin misiniz? Bu işlem geri alınamaz!"
+        "Bu notu silmek istediğinize emin misiniz? Bu işlem geri alınamaz!",
       )
     ) {
       return;
@@ -61,6 +62,10 @@ export default function NoteDetailPage() {
     try {
       await noteAPI.deleteNote(noteId);
       toast.success("Not silindi!");
+
+      queryClient.invalidateQueries({ queryKey: ["note", noteId] });
+      queryClient.invalidateQueries({ queryKey: ["notes", user?.id] });
+
       router.push("/dashboard");
     } catch (error) {
       console.error("Silme hatası:", error);
@@ -122,7 +127,7 @@ export default function NoteDetailPage() {
   // Expire durumu
   const isExpired = note.isExpired || new Date(note.expiresAt) < new Date();
   const daysLeft = Math.ceil(
-    (new Date(note.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+    (new Date(note.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24),
   );
 
   return (
@@ -221,7 +226,8 @@ export default function NoteDetailPage() {
                           Not İçeriği
                         </h3>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
-                          Tam metin {note.hasImages && `• ${note.imageCount} resim`}
+                          Tam metin{" "}
+                          {note.hasImages && `• ${note.imageCount} resim`}
                         </p>
                       </div>
                     </div>
@@ -233,8 +239,8 @@ export default function NoteDetailPage() {
                     )}
                   </div>
                   <div className="text-gray-700 dark:text-gray-300 text-lg leading-relaxed bg-gray-50 dark:bg-gray-900/50 p-5 rounded-xl">
-                    <MarkdownRenderer 
-                      content={note.content} 
+                    <MarkdownRenderer
+                      content={note.content}
                       images={note.images}
                     />
                   </div>
@@ -323,7 +329,7 @@ export default function NoteDetailPage() {
                                 <span className="text-xs px-2 py-1 bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 rounded">
                                   %
                                   {Math.round(
-                                    (similarNote.similarityScore || 0) * 100
+                                    (similarNote.similarityScore || 0) * 100,
                                   )}
                                 </span>
                               </div>
@@ -364,13 +370,13 @@ export default function NoteDetailPage() {
                   <span>📁</span>
                   Kategori
                   <Link
-                    href={`/browse?category=${note.category}${note.subcategory ? `&subcategory=${note.subcategory}` : ''}`}
+                    href={`/browse?category=${note.category}${note.subcategory ? `&subcategory=${note.subcategory}` : ""}`}
                     className="ml-auto text-xs bg-purple-200 dark:bg-purple-800 px-2 py-0.5 rounded hover:bg-purple-300 dark:hover:bg-purple-700 transition-colors"
                   >
                     Kategoriye Git →
                   </Link>
                 </h3>
-                
+
                 {/* Category Path */}
                 <div className="flex items-center gap-2 mb-4">
                   <Link
@@ -378,20 +384,29 @@ export default function NoteDetailPage() {
                     className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-200 border border-purple-300 dark:border-purple-700 hover:shadow-md transition-all"
                   >
                     <span className="text-lg">
-                      {note.category === 'tech-production' ? '💻' :
-                       note.category === 'work-career' ? '💼' :
-                       note.category === 'personal-growth' ? '🧠' :
-                       note.category === 'projects-planning' ? '🗺️' :
-                       note.category === 'finance-management' ? '💰' :
-                       note.category === 'life-organization' ? '🏡' :
-                       note.category === 'health-wellbeing' ? '❤️' :
-                       note.category === 'log-archive' ? '📝' : '📁'}
+                      {note.category === "tech-production"
+                        ? "💻"
+                        : note.category === "work-career"
+                          ? "💼"
+                          : note.category === "personal-growth"
+                            ? "🧠"
+                            : note.category === "projects-planning"
+                              ? "🗺️"
+                              : note.category === "finance-management"
+                                ? "💰"
+                                : note.category === "life-organization"
+                                  ? "🏡"
+                                  : note.category === "health-wellbeing"
+                                    ? "❤️"
+                                    : note.category === "log-archive"
+                                      ? "📝"
+                                      : "📁"}
                     </span>
                     <span className="font-medium capitalize">
-                      {note.category.replace(/-/g, ' ')}
+                      {note.category.replace(/-/g, " ")}
                     </span>
                   </Link>
-                  
+
                   {note.subcategory && (
                     <>
                       <span className="text-gray-400">→</span>
@@ -400,7 +415,9 @@ export default function NoteDetailPage() {
                         className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-white/50 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all"
                       >
                         <span>🏷️</span>
-                        <span className="capitalize">{note.subcategory.replace(/-/g, ' ')}</span>
+                        <span className="capitalize">
+                          {note.subcategory.replace(/-/g, " ")}
+                        </span>
                       </Link>
                     </>
                   )}
@@ -409,11 +426,13 @@ export default function NoteDetailPage() {
                 {/* Category Metadata */}
                 {note.categoryAssignedAt && (
                   <div className="pt-3 border-t border-purple-200 dark:border-purple-700 text-xs text-gray-500 dark:text-gray-400">
-                    <span className="font-medium">Kategorize:</span>{' '}
+                    <span className="font-medium">Kategorize:</span>{" "}
                     {formatDate(note.categoryAssignedAt)}
                     {note.categoryAssignedBy && (
                       <span className="ml-2 px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900 rounded">
-                        {note.categoryAssignedBy === 'ai' ? '🤖 AI' : '✏️ Manuel'}
+                        {note.categoryAssignedBy === "ai"
+                          ? "🤖 AI"
+                          : "✏️ Manuel"}
                       </span>
                     )}
                   </div>
@@ -492,7 +511,7 @@ export default function NoteDetailPage() {
                     {formatDate(
                       note.metadata?.lastEdited ||
                         note.updatedAt ||
-                        note.createdAt
+                        note.createdAt,
                     )}
                   </div>
                 </div>

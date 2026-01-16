@@ -167,7 +167,7 @@ export interface UpdateNoteOptions {
 class ElasticsearchNoteAPI {
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
   ): Promise<T> {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       headers: {
@@ -323,7 +323,7 @@ class ElasticsearchNoteAPI {
       ai_title?: string;
       ai_summary?: string;
       ai_suggested?: boolean;
-    }
+    },
   ): Promise<Note> {
     const options: CreateNoteOptions = {
       userId,
@@ -389,7 +389,9 @@ class ElasticsearchNoteAPI {
     // İçerik değiştiyse analiz yap
     if (content) {
       // Clean content for analysis (remove image placeholders)
-      const cleanContent = content.replace(/\{\{img:[a-f0-9-]+\}\}/g, "").trim();
+      const cleanContent = content
+        .replace(/\{\{img:[a-f0-9-]+\}\}/g, "")
+        .trim();
 
       updates.content = content;
       updates.keywords = await this.extractKeywordsWithElastic(cleanContent);
@@ -425,12 +427,7 @@ class ElasticsearchNoteAPI {
 
     // Images güncelleme
     if (images !== undefined) {
-      // Merge existing images with new ones
-      const existingImages = existingNote.images || [];
-      const existingIds = new Set(existingImages.map((img) => img.id));
-      const newImages = images.filter((img) => !existingIds.has(img.id));
-
-      updates.images = [...existingImages, ...newImages];
+      updates.images = images;
       updates.hasImages = updates.images.length > 0;
       updates.imageCount = updates.images.length;
     }
@@ -637,7 +634,7 @@ class ElasticsearchNoteAPI {
     userId: string,
     query: string,
     page = 1,
-    pageSize = 10
+    pageSize = 10,
   ): Promise<{
     notes: Note[];
     total: number;
@@ -750,7 +747,7 @@ class ElasticsearchNoteAPI {
   async getNotes(
     userId: string,
     page = 1,
-    pageSize = 20
+    pageSize = 20,
   ): Promise<{
     notes: Note[];
     total: number;
@@ -831,7 +828,7 @@ class ElasticsearchNoteAPI {
       }
     } catch (error) {
       console.log(
-        "Elasticsearch _id ile bulunamadı, custom id ile aranıyor..."
+        "Elasticsearch _id ile bulunamadı, custom id ile aranıyor...",
       );
     }
 
@@ -969,7 +966,7 @@ class ElasticsearchNoteAPI {
   async getAINotes(
     userId: string,
     page = 1,
-    pageSize = 10
+    pageSize = 10,
   ): Promise<{
     notes: Note[];
     total: number;
@@ -1025,7 +1022,7 @@ class ElasticsearchNoteAPI {
   async getUserEditedAINotes(
     userId: string,
     page = 1,
-    pageSize = 10
+    pageSize = 10,
   ): Promise<{
     notes: Note[];
     total: number;
@@ -1083,7 +1080,7 @@ class ElasticsearchNoteAPI {
     userId: string,
     language: string,
     page = 1,
-    pageSize = 10
+    pageSize = 10,
   ): Promise<{
     notes: Note[];
     total: number;
@@ -1138,7 +1135,7 @@ class ElasticsearchNoteAPI {
   async findSimilarNotes(
     noteId: string,
     userId: string,
-    limit = 5
+    limit = 5,
   ): Promise<Note[]> {
     try {
       const sourceNote = await this.getNoteById(noteId);
@@ -1232,7 +1229,13 @@ class ElasticsearchNoteAPI {
       mustClauses.push({
         multi_match: {
           query: options.query,
-          fields: ["content^3", "searchContent^2.5", "title^2", "keywords^1.5", "summary^1"],
+          fields: [
+            "content^3",
+            "searchContent^2.5",
+            "title^2",
+            "keywords^1.5",
+            "summary^1",
+          ],
           type: "best_fields",
           fuzziness: "AUTO",
         },
@@ -1483,7 +1486,7 @@ class ElasticsearchNoteAPI {
    * Get all categories with their subcategory counts
    */
   async getCategoriesWithSubcategories(
-    userId: string
+    userId: string,
   ): Promise<CategoryAggregation[]> {
     const response = await this.request<{
       aggregations: {
@@ -1545,7 +1548,7 @@ class ElasticsearchNoteAPI {
     category: string,
     subcategory?: string,
     page = 1,
-    pageSize = 20
+    pageSize = 20,
   ): Promise<{ notes: Note[]; total: number }> {
     const mustClauses: object[] = [
       { term: { userId } },
@@ -1592,7 +1595,7 @@ class ElasticsearchNoteAPI {
    */
   async getSubcategoriesForCategory(
     userId: string,
-    category: string
+    category: string,
   ): Promise<{ subcategory: string; count: number }[]> {
     const response = await this.request<{
       aggregations: {
@@ -1633,7 +1636,7 @@ class ElasticsearchNoteAPI {
     noteId: string,
     category: string,
     subcategory: string,
-    assignedBy: "ai" | "user" = "user"
+    assignedBy: "ai" | "user" = "user",
   ): Promise<Note> {
     const existingNote = await this.getNoteById(noteId);
     if (!existingNote) {
@@ -1663,7 +1666,7 @@ class ElasticsearchNoteAPI {
   async getNotesWithoutCategory(
     userId: string,
     page = 1,
-    pageSize = 50
+    pageSize = 50,
   ): Promise<{ notes: Note[]; total: number }> {
     const from = (page - 1) * pageSize;
 

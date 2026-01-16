@@ -371,6 +371,42 @@ export function combineOcrTexts(ocrTexts?: (string | null)[]): string | undefine
 }
 
 /**
+ * AI tetikleme için toplam içerik uzunluğunu hesapla (cleanText + OCR)
+ * Bu fonksiyon AI'ın tetiklenip tetiklenmeyeceğini belirlemek için kullanılır
+ */
+export function getTotalContentLength(
+  content: string,
+  ocrTexts?: (string | null)[]
+): number {
+  const cleanText = getSearchableContent(content);
+  const ocrLength = combineOcrTexts(ocrTexts)?.length || 0;
+  return cleanText.length + ocrLength;
+}
+
+/**
+ * Content içinde referans edilen image ID'leri ile mevcut images arasındaki
+ * orphan (artık kullanılmayan) image'ları bul
+ */
+export function findOrphanedImages<T extends { id: string }>(
+  content: string,
+  images: T[]
+): T[] {
+  const referencedIds = new Set(extractImageIds(content));
+  return images.filter(img => !referencedIds.has(img.id));
+}
+
+/**
+ * Content içinde referans edilen image'ları filtrele (sadece kullanılanları döndür)
+ */
+export function filterReferencedImages<T extends { id: string }>(
+  content: string,
+  images: T[]
+): T[] {
+  const referencedIds = new Set(extractImageIds(content));
+  return images.filter(img => referencedIds.has(img.id));
+}
+
+/**
  * Placeholder'ı markdown image'a çevir
  */
 export function replacePlaceholders(

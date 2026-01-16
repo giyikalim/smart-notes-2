@@ -224,7 +224,7 @@ export async function deleteImage(
   imageId: string
 ): Promise<void> {
   const basePath = `${userId}/${imageId}`;
-  
+
   const files = [
     `${basePath}/original.webp`,
     `${basePath}/medium.webp`,
@@ -241,6 +241,46 @@ export async function deleteImage(
   if (error) {
     throw new Error(`Delete failed: ${error.message}`);
   }
+}
+
+/**
+ * Birden fazla image'ı sil (batch)
+ */
+export async function deleteImages(
+  userId: string,
+  imageIds: string[]
+): Promise<{ deleted: string[]; failed: string[] }> {
+  const deleted: string[] = [];
+  const failed: string[] = [];
+
+  // Collect all file paths
+  const allFiles: string[] = [];
+  for (const imageId of imageIds) {
+    const basePath = `${userId}/${imageId}`;
+    allFiles.push(
+      `${basePath}/original.webp`,
+      `${basePath}/medium.webp`,
+      `${basePath}/thumb.webp`
+    );
+  }
+
+  // Clear from cache
+  allFiles.forEach(f => signedUrlCache.delete(f));
+
+  // Delete in batch
+  const { error } = await supabase.storage
+    .from('note-images')
+    .remove(allFiles);
+
+  if (error) {
+    console.error('Batch delete error:', error);
+    // Mark all as failed
+    failed.push(...imageIds);
+  } else {
+    deleted.push(...imageIds);
+  }
+
+  return { deleted, failed };
 }
 
 /**

@@ -16,8 +16,14 @@ import {
   getCategoryName,
 } from "@/lib/categories";
 import { noteAPI, NoteImage } from "@/lib/elasticsearch-client";
-import { hasImages, getContentForAI } from "@/lib/image-processor";
-import { UploadedImage } from "@/lib/image-uploader";
+import {
+  combineOcrTexts,
+  filterReferencedImages,
+  findOrphanedImages,
+  getContentForAI,
+  hasImages,
+} from "@/lib/image-processor";
+import { deleteImages, UploadedImage } from "@/lib/image-uploader";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
@@ -98,7 +104,7 @@ export default function FullscreenEditPage() {
       setSummary(note.summary || "");
       setKeywords(note.keywords || []);
       setWordCount(
-        note.content.split(/\s+/).filter((w) => w.length > 0).length
+        note.content.split(/\s+/).filter((w) => w.length > 0).length,
       );
 
       // Load category
@@ -134,7 +140,7 @@ export default function FullscreenEditPage() {
     setIsCategoryLoading(true);
     try {
       // Use clean content + OCR for AI
-      const ocrTexts = uploadedImages.map(img => img.ocrText);
+      const ocrTexts = uploadedImages.map((img) => img.ocrText);
       const contentForAI = getContentForAI(content, ocrTexts);
       const result = await getAICategory(contentForAI);
       if (result.success && result.data) {
@@ -142,7 +148,7 @@ export default function FullscreenEditPage() {
         setSubcategory(result.data.subcategory);
         setCategoryModified(true);
         toast.success(
-          `📁 Kategori: ${getCategoryName(result.data.category, locale)}`
+          `📁 Kategori: ${getCategoryName(result.data.category, locale)}`,
         );
       } else {
         toast.error("Kategori oluşturma başarısız");
@@ -162,7 +168,7 @@ export default function FullscreenEditPage() {
 
   // AI önerisini uygula
   const applyAISuggestion = (
-    type: "title" | "summary" | "both" | "content"
+    type: "title" | "summary" | "both" | "content",
   ) => {
     if (!aiSuggestions) return;
 
@@ -222,7 +228,7 @@ export default function FullscreenEditPage() {
     setCurrentAIWorker(workerId);
 
     // Use clean content + OCR for all AI operations
-    const ocrTexts = uploadedImages.map(img => img.ocrText);
+    const ocrTexts = uploadedImages.map((img) => img.ocrText);
     const contentForAI = getContentForAI(content, ocrTexts);
 
     try {
@@ -382,19 +388,36 @@ export default function FullscreenEditPage() {
       const allImages = [
         ...(note?.images || []),
         ...uploadedImages.filter(
-          (img) => !note?.images?.some((existing) => existing.id === img.id)
+          (img) => !note?.images?.some((existing) => existing.id === img.id),
         ),
       ];
+
+      // Filter to only keep images that are still referenced in content
+      const referencedImages = filterReferencedImages(content, allImages);
+      const orphanedImages = findOrphanedImages(content, allImages);
+
+      // Delete orphaned images from Supabase storage
+      if (orphanedImages.length > 0 && user) {
+        const orphanedIds = orphanedImages.map((img) => img.id);
+        await deleteImages(user.id, orphanedIds);
+        console.log(`Deleted ${orphanedIds.length} orphaned images`);
+      }
+
+      // Build searchContent: only OCR text from referenced images
+      const searchContent = combineOcrTexts(
+        referencedImages.map((img) => img.ocrText),
+      );
 
       await noteAPI.updateNote({
         noteId,
         content,
+        searchContent,
         title: title || updates.title,
         summary: summary || updates.summary,
         isEditedByUser: true,
         category,
         subcategory,
-        images: allImages.length > 0 ? allImages : undefined,
+        images: referencedImages.length > 0 ? referencedImages : [],
       });
 
       // Update category if modified or if note doesn't have category yet
@@ -403,17 +426,19 @@ export default function FullscreenEditPage() {
           noteId,
           category!,
           subcategory!,
-          "user"
+          "user",
         );
       } else if (!note?.category && content.length >= 20) {
         // Generate category for notes that don't have any
-        const catResult = await getAICategory(content);
+        const ocrTexts = referencedImages.map((img) => img.ocrText);
+        const contentForAI = getContentForAI(content, ocrTexts);
+        const catResult = await getAICategory(contentForAI);
         if (catResult.success && catResult.data) {
           await noteAPI.updateNoteCategory(
             noteId,
             catResult.data.category,
             catResult.data.subcategory,
-            "ai"
+            "ai",
           );
         }
       }
@@ -443,7 +468,7 @@ export default function FullscreenEditPage() {
         summary !== note.summary ||
         title !== note.title) &&
       !confirm(
-        "Kaydedilmemiş değişiklikler var. Çıkmak istediğinize emin misiniz?"
+        "Kaydedilmemiş değişiklikler var. Çıkmak istediğinize emin misiniz?",
       )
     ) {
       return;
@@ -934,7 +959,7 @@ export default function FullscreenEditPage() {
                       {Object.entries(aiResults).map(([workerId, result]) => {
                         if (!result?.success) return null;
                         const worker = AI_WORKERS.find(
-                          (w) => w.id === workerId
+                          (w) => w.id === workerId,
                         );
                         return (
                           <div
@@ -953,7 +978,7 @@ export default function FullscreenEditPage() {
                               </span>
                               <span className="text-gray-500">
                                 {new Date(
-                                  result.timestamp || Date.now()
+                                  result.timestamp || Date.now(),
                                 ).toLocaleTimeString()}
                               </span>
                             </div>
