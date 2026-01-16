@@ -1,29 +1,26 @@
 // components/editor/MilkdownEditor.tsx
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from 'react';
-import { 
-  Image, 
-  Bold, 
-  Italic, 
-  List, 
-  ListOrdered, 
-  Heading1, 
-  Heading2,
-  Quote,
+import { useImageUpload } from "@/hooks/useImageUpload";
+import { hasImages } from "@/lib/image-processor";
+import { UploadedImage, getSignedUrl } from "@/lib/image-uploader";
+import {
+  Bold,
   Code,
-  Link as LinkIcon,
-  Undo,
-  Redo,
-  Upload,
-  Loader2,
-  X,
-  Eye,
   Edit3,
-} from 'lucide-react';
-import { useImageUpload, UploadState } from '@/hooks/useImageUpload';
-import { UploadedImage, getSignedUrl } from '@/lib/image-uploader';
-import { hasImages } from '@/lib/image-processor';
+  Eye,
+  Heading1,
+  Heading2,
+  Image,
+  Italic,
+  Link as LinkIcon,
+  List,
+  ListOrdered,
+  Loader2,
+  Quote,
+  X,
+} from "lucide-react";
+import { useCallback, useRef, useState } from "react";
 
 interface MilkdownEditorProps {
   value: string;
@@ -45,131 +42,146 @@ interface UploadedImageInfo {
 export default function MilkdownEditor({
   value,
   onChange,
-  placeholder = 'Notunuzu buraya yazın...',
-  minHeight = '300px',
+  placeholder = "Notunuzu buraya yazın...",
+  minHeight = "300px",
   disabled = false,
   onImageUpload,
-  className = '',
+  className = "",
 }: MilkdownEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isPreview, setIsPreview] = useState(false);
-  const [uploadedImages, setUploadedImages] = useState<Map<string, UploadedImageInfo>>(new Map());
-  
+  const [uploadedImages, setUploadedImages] = useState<
+    Map<string, UploadedImageInfo>
+  >(new Map());
+
   const { state: uploadState, upload, reset: resetUpload } = useImageUpload();
 
   // Toolbar action helper
-  const insertText = useCallback((before: string, after: string = '', placeholder: string = '') => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
+  const insertText = useCallback(
+    (before: string, after: string = "", placeholder: string = "") => {
+      const textarea = textareaRef.current;
+      if (!textarea) return;
 
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const selectedText = value.substring(start, end) || placeholder;
-    
-    const newText = 
-      value.substring(0, start) + 
-      before + 
-      selectedText + 
-      after + 
-      value.substring(end);
-    
-    onChange(newText);
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const selectedText = value.substring(start, end) || placeholder;
 
-    // Cursor pozisyonunu ayarla
-    setTimeout(() => {
-      textarea.focus();
-      const newCursorPos = start + before.length + selectedText.length;
-      textarea.setSelectionRange(newCursorPos, newCursorPos);
-    }, 0);
-  }, [value, onChange]);
+      const newText =
+        value.substring(0, start) +
+        before +
+        selectedText +
+        after +
+        value.substring(end);
+
+      onChange(newText);
+
+      // Cursor pozisyonunu ayarla
+      setTimeout(() => {
+        textarea.focus();
+        const newCursorPos = start + before.length + selectedText.length;
+        textarea.setSelectionRange(newCursorPos, newCursorPos);
+      }, 0);
+    },
+    [value, onChange],
+  );
 
   // Toolbar actions
   const toolbarActions = {
-    bold: () => insertText('**', '**', 'kalın metin'),
-    italic: () => insertText('*', '*', 'italik metin'),
-    h1: () => insertText('# ', '', 'Başlık'),
-    h2: () => insertText('## ', '', 'Alt Başlık'),
-    list: () => insertText('- ', '', 'liste öğesi'),
-    orderedList: () => insertText('1. ', '', 'liste öğesi'),
-    quote: () => insertText('> ', '', 'alıntı'),
-    code: () => insertText('`', '`', 'kod'),
-    link: () => insertText('[', '](url)', 'link metni'),
+    bold: () => insertText("**", "**", "kalın metin"),
+    italic: () => insertText("*", "*", "italik metin"),
+    h1: () => insertText("# ", "", "Başlık"),
+    h2: () => insertText("## ", "", "Alt Başlık"),
+    list: () => insertText("- ", "", "liste öğesi"),
+    orderedList: () => insertText("1. ", "", "liste öğesi"),
+    quote: () => insertText("> ", "", "alıntı"),
+    code: () => insertText("`", "`", "kod"),
+    link: () => insertText("[", "](url)", "link metni"),
   };
 
   // Image upload handler
-  const handleImageSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleImageSelect = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
 
-    // Reset file input
-    e.target.value = '';
+      // Reset file input
+      e.target.value = "";
 
-    const result = await upload(file);
-    if (result) {
-      // Get signed URL for preview
-      let previewUrl = '';
-      try {
-        previewUrl = await getSignedUrl(result.storagePaths.thumb);
-      } catch (err) {
-        console.error('Failed to get preview URL:', err);
-      }
-
-      // Add to uploaded images map
-      setUploadedImages(prev => new Map(prev).set(result.id, {
-        id: result.id,
-        previewUrl,
-        ocrText: result.ocrText,
-      }));
-
-      // Insert placeholder into content
-      const placeholder = `\n\n{{img:${result.id}}}\n\n`;
-      const textarea = textareaRef.current;
-      if (textarea) {
-        const cursorPos = textarea.selectionStart;
-        const newValue = 
-          value.substring(0, cursorPos) + 
-          placeholder + 
-          value.substring(cursorPos);
-        onChange(newValue);
-      }
-
-      // Callback
-      onImageUpload?.(result);
-      resetUpload();
-    }
-  }, [upload, value, onChange, onImageUpload, resetUpload]);
-
-  // Drag & drop handler
-  const handleDrop = useCallback(async (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith('image/')) {
       const result = await upload(file);
       if (result) {
         // Get signed URL for preview
-        let previewUrl = '';
+        let previewUrl = "";
         try {
           previewUrl = await getSignedUrl(result.storagePaths.thumb);
         } catch (err) {
-          console.error('Failed to get preview URL:', err);
+          console.error("Failed to get preview URL:", err);
         }
 
-        setUploadedImages(prev => new Map(prev).set(result.id, {
-          id: result.id,
-          previewUrl,
-          ocrText: result.ocrText,
-        }));
+        // Add to uploaded images map
+        setUploadedImages((prev) =>
+          new Map(prev).set(result.id, {
+            id: result.id,
+            previewUrl,
+            ocrText: result.ocrText,
+          }),
+        );
 
+        // Insert placeholder into content
         const placeholder = `\n\n{{img:${result.id}}}\n\n`;
-        onChange(value + placeholder);
+        const textarea = textareaRef.current;
+        if (textarea) {
+          const cursorPos = textarea.selectionStart;
+          const newValue =
+            value.substring(0, cursorPos) +
+            placeholder +
+            value.substring(cursorPos);
+          onChange(newValue);
+        }
+
+        // Callback
         onImageUpload?.(result);
         resetUpload();
       }
-    }
-  }, [upload, value, onChange, onImageUpload, resetUpload]);
+    },
+    [upload, value, onChange, onImageUpload, resetUpload],
+  );
+
+  // Drag & drop handler
+  const handleDrop = useCallback(
+    async (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const file = e.dataTransfer.files[0];
+      if (file && file.type.startsWith("image/")) {
+        const result = await upload(file);
+        if (result) {
+          // Get signed URL for preview
+          let previewUrl = "";
+          try {
+            previewUrl = await getSignedUrl(result.storagePaths.thumb);
+          } catch (err) {
+            console.error("Failed to get preview URL:", err);
+          }
+
+          setUploadedImages((prev) =>
+            new Map(prev).set(result.id, {
+              id: result.id,
+              previewUrl,
+              ocrText: result.ocrText,
+            }),
+          );
+
+          const placeholder = `\n\n{{img:${result.id}}}\n\n`;
+          onChange(value + placeholder);
+          onImageUpload?.(result);
+          resetUpload();
+        }
+      }
+    },
+    [upload, value, onChange, onImageUpload, resetUpload],
+  );
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -177,53 +189,58 @@ export default function MilkdownEditor({
   }, []);
 
   // Paste handler for images
-  const handlePaste = useCallback(async (e: React.ClipboardEvent) => {
-    const items = e.clipboardData.items;
-    
-    for (const item of items) {
-      if (item.type.startsWith('image/')) {
-        e.preventDefault();
-        const file = item.getAsFile();
-        if (file) {
-          const result = await upload(file);
-          if (result) {
-            // Get signed URL for preview
-            let previewUrl = '';
-            try {
-              previewUrl = await getSignedUrl(result.storagePaths.thumb);
-            } catch (err) {
-              console.error('Failed to get preview URL:', err);
-            }
+  const handlePaste = useCallback(
+    async (e: React.ClipboardEvent) => {
+      const items = e.clipboardData.items;
 
-            setUploadedImages(prev => new Map(prev).set(result.id, {
-              id: result.id,
-              previewUrl,
-              ocrText: result.ocrText,
-            }));
+      for (const item of items) {
+        if (item.type.startsWith("image/")) {
+          e.preventDefault();
+          const file = item.getAsFile();
+          if (file) {
+            const result = await upload(file);
+            if (result) {
+              // Get signed URL for preview
+              let previewUrl = "";
+              try {
+                previewUrl = await getSignedUrl(result.storagePaths.thumb);
+              } catch (err) {
+                console.error("Failed to get preview URL:", err);
+              }
 
-            const placeholder = `{{img:${result.id}}}`;
-            const textarea = textareaRef.current;
-            if (textarea) {
-              const cursorPos = textarea.selectionStart;
-              const newValue = 
-                value.substring(0, cursorPos) + 
-                placeholder + 
-                value.substring(cursorPos);
-              onChange(newValue);
+              setUploadedImages((prev) =>
+                new Map(prev).set(result.id, {
+                  id: result.id,
+                  previewUrl,
+                  ocrText: result.ocrText,
+                }),
+              );
+
+              const placeholder = `{{img:${result.id}}}`;
+              const textarea = textareaRef.current;
+              if (textarea) {
+                const cursorPos = textarea.selectionStart;
+                const newValue =
+                  value.substring(0, cursorPos) +
+                  placeholder +
+                  value.substring(cursorPos);
+                onChange(newValue);
+              }
+              onImageUpload?.(result);
+              resetUpload();
             }
-            onImageUpload?.(result);
-            resetUpload();
           }
+          break;
         }
-        break;
       }
-    }
-  }, [upload, value, onChange, onImageUpload, resetUpload]);
+    },
+    [upload, value, onChange, onImageUpload, resetUpload],
+  );
 
   // Render preview with images
   const renderPreview = useCallback(() => {
     let previewContent = value;
-    
+
     // Replace image placeholders with actual images
     previewContent = previewContent.replace(
       /\{\{img:([a-f0-9-]+)\}\}/g,
@@ -233,29 +250,49 @@ export default function MilkdownEditor({
           return `![image](${imageInfo.previewUrl})`;
         }
         return match;
-      }
+      },
     );
 
     // Simple markdown to HTML (basic)
     return previewContent
-      .replace(/^### (.*$)/gm, '<h3 class="text-lg font-semibold mt-4 mb-2">$1</h3>')
-      .replace(/^## (.*$)/gm, '<h2 class="text-xl font-semibold mt-4 mb-2">$1</h2>')
+      .replace(
+        /^### (.*$)/gm,
+        '<h3 class="text-lg font-semibold mt-4 mb-2">$1</h3>',
+      )
+      .replace(
+        /^## (.*$)/gm,
+        '<h2 class="text-xl font-semibold mt-4 mb-2">$1</h2>',
+      )
       .replace(/^# (.*$)/gm, '<h1 class="text-2xl font-bold mt-4 mb-2">$1</h1>')
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/`(.*?)`/g, '<code class="bg-gray-100 dark:bg-gray-800 px-1 rounded">$1</code>')
-      .replace(/!\[.*?\]\((.*?)\)/g, '<img src="$1" class="max-w-full h-auto rounded-lg my-2" />')
-      .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" class="text-blue-600 hover:underline">$1</a>')
-      .replace(/^> (.*$)/gm, '<blockquote class="border-l-4 border-gray-300 pl-4 italic my-2">$1</blockquote>')
+      .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+      .replace(/\*(.*?)\*/g, "<em>$1</em>")
+      .replace(
+        /`(.*?)`/g,
+        '<code class="bg-gray-100 dark:bg-gray-800 px-1 rounded">$1</code>',
+      )
+      .replace(
+        /!\[.*?\]\((.*?)\)/g,
+        '<img src="$1" class="max-w-full h-auto rounded-lg my-2" />',
+      )
+      .replace(
+        /\[(.*?)\]\((.*?)\)/g,
+        '<a href="$2" class="text-blue-600 hover:underline">$1</a>',
+      )
+      .replace(
+        /^> (.*$)/gm,
+        '<blockquote class="border-l-4 border-gray-300 pl-4 italic my-2">$1</blockquote>',
+      )
       .replace(/^- (.*$)/gm, '<li class="ml-4">$1</li>')
       .replace(/^\d+\. (.*$)/gm, '<li class="ml-4 list-decimal">$1</li>')
-      .replace(/\n/g, '<br />');
+      .replace(/\n/g, "<br />");
   }, [value, uploadedImages]);
 
   const hasImagesInContent = hasImages(value);
 
   return (
-    <div className={`border border-gray-300 dark:border-gray-700 rounded-lg overflow-hidden ${className}`}>
+    <div
+      className={`border border-gray-300 dark:border-gray-700 rounded-lg overflow-hidden ${className}`}
+    >
       {/* Toolbar */}
       <div className="flex items-center gap-1 p-2 bg-gray-50 dark:bg-gray-800 border-b border-gray-300 dark:border-gray-700 flex-wrap">
         <button
@@ -276,9 +313,9 @@ export default function MilkdownEditor({
         >
           <Italic className="w-4 h-4" />
         </button>
-        
+
         <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1" />
-        
+
         <button
           type="button"
           onClick={toolbarActions.h1}
@@ -297,9 +334,9 @@ export default function MilkdownEditor({
         >
           <Heading2 className="w-4 h-4" />
         </button>
-        
+
         <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1" />
-        
+
         <button
           type="button"
           onClick={toolbarActions.list}
@@ -318,9 +355,9 @@ export default function MilkdownEditor({
         >
           <ListOrdered className="w-4 h-4" />
         </button>
-        
+
         <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1" />
-        
+
         <button
           type="button"
           onClick={toolbarActions.quote}
@@ -348,18 +385,24 @@ export default function MilkdownEditor({
         >
           <LinkIcon className="w-4 h-4" />
         </button>
-        
+
         <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1" />
-        
+
         {/* Image upload button */}
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          disabled={disabled || isPreview || uploadState.stage === 'processing' || uploadState.stage === 'uploading'}
+          disabled={
+            disabled ||
+            isPreview ||
+            uploadState.stage === "processing" ||
+            uploadState.stage === "uploading"
+          }
           className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded disabled:opacity-50 text-blue-600 dark:text-blue-400"
           title="Resim Ekle"
         >
-          {uploadState.stage === 'processing' || uploadState.stage === 'uploading' ? (
+          {uploadState.stage === "processing" ||
+          uploadState.stage === "uploading" ? (
             <Loader2 className="w-4 h-4 animate-spin" />
           ) : (
             <Image className="w-4 h-4" />
@@ -381,18 +424,23 @@ export default function MilkdownEditor({
           type="button"
           onClick={() => setIsPreview(!isPreview)}
           className={`p-2 rounded transition-colors ${
-            isPreview 
-              ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400' 
-              : 'hover:bg-gray-200 dark:hover:bg-gray-700'
+            isPreview
+              ? "bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400"
+              : "hover:bg-gray-200 dark:hover:bg-gray-700"
           }`}
-          title={isPreview ? 'Düzenle' : 'Önizleme'}
+          title={isPreview ? "Düzenle" : "Önizleme"}
         >
-          {isPreview ? <Edit3 className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          {isPreview ? (
+            <Edit3 className="w-4 h-4" />
+          ) : (
+            <Eye className="w-4 h-4" />
+          )}
         </button>
       </div>
 
       {/* Upload progress */}
-      {(uploadState.stage === 'processing' || uploadState.stage === 'uploading') && (
+      {(uploadState.stage === "processing" ||
+        uploadState.stage === "uploading") && (
         <div className="px-4 py-2 bg-blue-50 dark:bg-blue-900/30 border-b border-blue-200 dark:border-blue-800">
           <div className="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300">
             <Loader2 className="w-4 h-4 animate-spin" />
@@ -400,7 +448,7 @@ export default function MilkdownEditor({
             <span className="ml-auto">{Math.round(uploadState.progress)}%</span>
           </div>
           <div className="mt-1 h-1 bg-blue-200 dark:bg-blue-800 rounded-full overflow-hidden">
-            <div 
+            <div
               className="h-full bg-blue-600 dark:bg-blue-400 transition-all duration-300"
               style={{ width: `${uploadState.progress}%` }}
             />
@@ -409,10 +457,15 @@ export default function MilkdownEditor({
       )}
 
       {/* Error state */}
-      {uploadState.stage === 'error' && (
+      {uploadState.stage === "error" && (
         <div className="px-4 py-2 bg-red-50 dark:bg-red-900/30 border-b border-red-200 dark:border-red-800 flex items-center justify-between">
-          <span className="text-sm text-red-700 dark:text-red-300">{uploadState.error}</span>
-          <button onClick={resetUpload} className="text-red-600 hover:text-red-800">
+          <span className="text-sm text-red-700 dark:text-red-300">
+            {uploadState.error}
+          </span>
+          <button
+            onClick={resetUpload}
+            className="text-red-600 hover:text-red-800"
+          >
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -420,7 +473,7 @@ export default function MilkdownEditor({
 
       {/* Editor / Preview */}
       {isPreview ? (
-        <div 
+        <div
           className="p-4 prose dark:prose-invert max-w-none overflow-auto"
           style={{ minHeight }}
           dangerouslySetInnerHTML={{ __html: renderPreview() }}
@@ -452,12 +505,8 @@ export default function MilkdownEditor({
 
       {/* Footer info */}
       <div className="px-4 py-2 bg-gray-50 dark:bg-gray-800 border-t border-gray-300 dark:border-gray-700 flex items-center justify-between text-xs text-gray-500">
-        <span>
-          Markdown destekli • Resim: sürükle-bırak veya yapıştır
-        </span>
-        <span>
-          {value.length} karakter
-        </span>
+        <span>Markdown destekli • Resim: sürükle-bırak veya yapıştır</span>
+        <span>{value.length} karakter</span>
       </div>
     </div>
   );

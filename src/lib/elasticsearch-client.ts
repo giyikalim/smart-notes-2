@@ -27,7 +27,7 @@ export interface Note {
   userId: string;
   title: string;
   content: string; // Markdown content with {{img:uuid}} placeholders
-  searchContent?: string; // Plain text for search (no placeholders, includes OCR text)
+  searchContent?: string; // OCR text only (extracted from images) - not duplicated content
   summary: string;
   keywords: string[]; // Kept for search functionality
   createdAt: string;
@@ -114,7 +114,7 @@ export interface AdvancedSearchOptions {
 export interface CreateNoteOptions {
   userId: string;
   content: string;
-  searchContent?: string; // Plain text for search (auto-generated if not provided)
+  searchContent?: string; // OCR text only from images (optional, only if images have OCR)
   title?: string;
   summary?: string;
   language?: string;
@@ -233,20 +233,22 @@ class ElasticsearchNoteAPI {
       summary && aiSuggestions && summary !== aiSuggestions.suggestedSummary;
     const userEdited = userEditedTitle || userEditedSummary;
 
-    // Anahtar kelimeler ve sentiment analizi
-    const keywords = await this.extractKeywordsWithElastic(content);
-    const sentiment = await this.analyzeSentiment(content);
+    // Clean content for analysis (remove image placeholders)
+    const cleanContent = content.replace(/\{\{img:[a-f0-9-]+\}\}/g, "").trim();
 
-    // Search content: plain text + OCR text
-    let finalSearchContent =
-      searchContent || content.replace(/\{\{img:[a-f0-9-]+\}\}/g, "").trim();
-    if (images && images.length > 0) {
+    // Anahtar kelimeler ve sentiment analizi (use clean content)
+    const keywords = await this.extractKeywordsWithElastic(cleanContent);
+    const sentiment = await this.analyzeSentiment(cleanContent);
+
+    // Search content: only OCR text from images (no content duplication)
+    let finalSearchContent: string | undefined = searchContent;
+    if (!finalSearchContent && images && images.length > 0) {
       const ocrTexts = images
         .filter((img) => img.ocrText)
         .map((img) => img.ocrText)
         .join(" ");
       if (ocrTexts) {
-        finalSearchContent += " " + ocrTexts;
+        finalSearchContent = ocrTexts;
       }
     }
 
@@ -256,7 +258,8 @@ class ElasticsearchNoteAPI {
       userId,
       title: finalTitle,
       content,
-      searchContent: finalSearchContent,
+      // Only include searchContent if there's OCR text (no content duplication)
+      ...(finalSearchContent && { searchContent: finalSearchContent }),
       summary: finalSummary,
       keywords,
       createdAt: new Date().toISOString(),
@@ -385,13 +388,16 @@ class ElasticsearchNoteAPI {
 
     // İçerik değiştiyse analiz yap
     if (content) {
+      // Clean content for analysis (remove image placeholders)
+      const cleanContent = content.replace(/\{\{img:[a-f0-9-]+\}\}/g, "").trim();
+
       updates.content = content;
-      updates.keywords = await this.extractKeywordsWithElastic(content);
+      updates.keywords = await this.extractKeywordsWithElastic(cleanContent);
       updates.metadata = {
         ...updates.metadata,
-        wordCount: content.split(/\s+/).filter((w) => w.length > 0).length,
-        sentiment: await this.analyzeSentiment(content),
-        readabilityScore: await this.calculateReadability(content),
+        wordCount: cleanContent.split(/\s+/).filter((w) => w.length > 0).length,
+        sentiment: await this.analyzeSentiment(cleanContent),
+        readabilityScore: await this.calculateReadability(cleanContent),
       };
 
       // Eğer başlık veya özet sağlanmadıysa, otomatik oluştur
@@ -403,22 +409,18 @@ class ElasticsearchNoteAPI {
       }
     }
 
-    // SearchContent güncelleme (images varsa OCR text dahil)
+    // SearchContent güncelleme: only OCR text from images (no content duplication)
     if (searchContent) {
       updates.searchContent = searchContent;
-    } else if (content) {
-      // Generate searchContent from content
-      let cleanContent = content.replace(/\{\{img:[a-f0-9-]+\}\}/g, "").trim();
-      if (images && images.length > 0) {
-        const ocrTexts = images
-          .filter((img) => img.ocrText)
-          .map((img) => img.ocrText)
-          .join(" ");
-        if (ocrTexts) {
-          cleanContent += " " + ocrTexts;
-        }
+    } else if (images && images.length > 0) {
+      // Only store OCR text, not the content itself
+      const ocrTexts = images
+        .filter((img) => img.ocrText)
+        .map((img) => img.ocrText)
+        .join(" ");
+      if (ocrTexts) {
+        updates.searchContent = ocrTexts;
       }
-      updates.searchContent = cleanContent;
     }
 
     // Images güncelleme
@@ -672,6 +674,7 @@ class ElasticsearchNoteAPI {
                         query,
                         fields: [
                           "content^3",
+                          "searchContent^2.5", // OCR text from images
                           "title^2",
                           "keywords^1.5",
                           "summary^1",
@@ -1229,7 +1232,7 @@ class ElasticsearchNoteAPI {
       mustClauses.push({
         multi_match: {
           query: options.query,
-          fields: ["content^3", "title^2", "keywords^1.5", "summary^1"],
+          fields: ["content^3", "searchContent^2.5", "title^2", "keywords^1.5", "summary^1"],
           type: "best_fields",
           fuzziness: "AUTO",
         },

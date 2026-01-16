@@ -16,7 +16,7 @@ import {
   getCategoryName,
 } from "@/lib/categories";
 import { noteAPI, NoteImage } from "@/lib/elasticsearch-client";
-import { hasImages } from "@/lib/image-processor";
+import { hasImages, getContentForAI } from "@/lib/image-processor";
 import { UploadedImage } from "@/lib/image-uploader";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -133,7 +133,10 @@ export default function FullscreenEditPage() {
 
     setIsCategoryLoading(true);
     try {
-      const result = await getAICategory(content);
+      // Use clean content + OCR for AI
+      const ocrTexts = uploadedImages.map(img => img.ocrText);
+      const contentForAI = getContentForAI(content, ocrTexts);
+      const result = await getAICategory(contentForAI);
       if (result.success && result.data) {
         setCategory(result.data.category);
         setSubcategory(result.data.subcategory);
@@ -218,12 +221,16 @@ export default function FullscreenEditPage() {
     setIsAIProcessing(true);
     setCurrentAIWorker(workerId);
 
+    // Use clean content + OCR for all AI operations
+    const ocrTexts = uploadedImages.map(img => img.ocrText);
+    const contentForAI = getContentForAI(content, ocrTexts);
+
     try {
       let result: any;
 
       switch (workerId) {
         case "suggest":
-          result = await getAISuggestion(content);
+          result = await getAISuggestion(contentForAI);
           if (result.success) {
             // Önerileri state'e kaydet
             setAiSuggestions((s) => ({
@@ -237,7 +244,7 @@ export default function FullscreenEditPage() {
           break;
 
         case "edit":
-          result = await getAIEdit(content);
+          result = await getAIEdit(contentForAI);
           if (result.success) {
             // Önerileri state'e kaydet
             setAiSuggestions((s) => ({
@@ -250,7 +257,7 @@ export default function FullscreenEditPage() {
           break;
 
         case "organize":
-          result = await getAIOrganize(content);
+          result = await getAIOrganize(contentForAI);
           if (result.success) {
             // Önerileri state'e kaydet
             setAiSuggestions((s) => ({

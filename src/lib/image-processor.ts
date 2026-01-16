@@ -335,6 +335,42 @@ export function getSearchableContent(content: string): string {
 }
 
 /**
+ * AI API için içerik hazırla (placeholder'sız + OCR metinleri)
+ * Bu fonksiyon AI'a gönderilecek metni hazırlar:
+ * - Image placeholder'larını temizler
+ * - OCR metinlerini ekler (varsa)
+ */
+export function getContentForAI(
+  content: string,
+  ocrTexts?: (string | null)[]
+): string {
+  // Remove image placeholders
+  let cleanContent = getSearchableContent(content);
+
+  // Append OCR texts if available
+  if (ocrTexts && ocrTexts.length > 0) {
+    const validOcrTexts = ocrTexts.filter((text): text is string => !!text);
+    if (validOcrTexts.length > 0) {
+      cleanContent += '\n\n[Resimlerden çıkarılan metin:]\n' + validOcrTexts.join('\n');
+    }
+  }
+
+  return cleanContent;
+}
+
+/**
+ * Sadece OCR metinlerini birleştir (searchContent için)
+ */
+export function combineOcrTexts(ocrTexts?: (string | null)[]): string | undefined {
+  if (!ocrTexts || ocrTexts.length === 0) return undefined;
+
+  const validOcrTexts = ocrTexts.filter((text): text is string => !!text);
+  if (validOcrTexts.length === 0) return undefined;
+
+  return validOcrTexts.join(' ');
+}
+
+/**
  * Placeholder'ı markdown image'a çevir
  */
 export function replacePlaceholders(

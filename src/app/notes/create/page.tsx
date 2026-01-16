@@ -1,18 +1,37 @@
 "use client";
 
-import { getAISuggestion, getAICategory, AICategoryResult } from "@/lib/ai-helper";
-import { useAuth } from "@/lib/auth";
-import { noteAPI, NoteImage } from "@/lib/elasticsearch-client";
-import { CATEGORIES, getCategoryName, getCategoryColors } from "@/lib/categories";
-import { getSearchableContent, hasImages } from "@/lib/image-processor";
 import MilkdownEditor from "@/components/editor/MilkdownEditor";
-import debounce from "lodash/debounce";
-import { useRouter } from "next/navigation";
-import { useCallback, useState, useRef } from "react";
-import toast from "react-hot-toast";
-import { useLocale } from "next-intl";
-import { FolderOpen, Tag, Loader2, Image as ImageIcon, AlertCircle } from "lucide-react";
+import {
+  AICategoryResult,
+  getAICategory,
+  getAISuggestion,
+} from "@/lib/ai-helper";
+import { useAuth } from "@/lib/auth";
+import {
+  CATEGORIES,
+  getCategoryColors,
+  getCategoryName,
+} from "@/lib/categories";
+import { noteAPI, NoteImage } from "@/lib/elasticsearch-client";
+import {
+  combineOcrTexts,
+  getContentForAI,
+  getSearchableContent,
+  hasImages,
+} from "@/lib/image-processor";
 import { UploadedImage } from "@/lib/image-uploader";
+import debounce from "lodash/debounce";
+import {
+  AlertCircle,
+  FolderOpen,
+  Image as ImageIcon,
+  Loader2,
+  Tag,
+} from "lucide-react";
+import { useLocale } from "next-intl";
+import { useRouter } from "next/navigation";
+import { useCallback, useState } from "react";
+import toast from "react-hot-toast";
 
 export default function CreateNotePage() {
   const { user } = useAuth();
@@ -40,16 +59,18 @@ export default function CreateNotePage() {
 
   // Uploaded images
   const [uploadedImages, setUploadedImages] = useState<NoteImage[]>([]);
-  
+
   // Track if content has images
   const contentHasImages = hasImages(content);
 
-  // Debounced AI suggestion - use searchable content (without image placeholders)
+  // Debounced AI suggestion - use clean content + OCR for AI analysis
   const getAISuggestions = useCallback(
     debounce(async (text: string) => {
-      // Get clean text for AI analysis
+      // Get clean text for AI analysis (no image placeholders, but include OCR)
+      const ocrTexts = uploadedImages.map((img) => img.ocrText);
+      const contentForAI = getContentForAI(text, ocrTexts);
       const cleanText = getSearchableContent(text);
-      
+
       if (cleanText.length < 30) {
         setAiSuggestions(null);
         setAiCategory(null);
@@ -60,10 +81,10 @@ export default function CreateNotePage() {
       setIsCategoryLoading(true);
 
       try {
-        // Use clean text for AI analysis
+        // Use clean text + OCR for AI analysis
         const [suggestion, category] = await Promise.all([
-          getAISuggestion(cleanText),
-          getAICategory(cleanText),
+          getAISuggestion(contentForAI),
+          getAICategory(contentForAI),
         ]);
 
         if (suggestion.success) {
@@ -98,33 +119,32 @@ export default function CreateNotePage() {
         setIsCategoryLoading(false);
       }
     }, 1500),
-    [userTitle, userSummary]
+    [userTitle, userSummary, uploadedImages],
   );
 
   // Handle content change from editor
-  const handleContentChange = useCallback((newContent: string) => {
-    setContent(newContent);
+  const handleContentChange = useCallback(
+    (newContent: string) => {
+      setContent(newContent);
 
-    const cleanText = getSearchableContent(newContent);
-    
-    if (cleanText.trim() && cleanText.length >= 30) {
-      getAISuggestions(newContent);
-    } else if (cleanText.trim()) {
-      const firstLine = cleanText.split("\n")[0];
-      const simpleTitle =
-        firstLine.length > 50 ? firstLine.substring(0, 50) + "..." : firstLine;
+      const cleanText = getSearchableContent(newContent);
 
-      if (!userTitle) setUserTitle(simpleTitle);
-      if (!userSummary) setUserSummary("");
-      setAiSuggestions(null);
-      setAiCategory(null);
-    } else {
-      setUserTitle("");
-      setUserSummary("");
-      setAiSuggestions(null);
-      setAiCategory(null);
-    }
-  }, [getAISuggestions, userTitle, userSummary]);
+      if (cleanText.trim() && cleanText.length >= 30) {
+        getAISuggestions(newContent);
+      } else if (cleanText.trim()) {
+        if (!userTitle) setUserTitle("");
+        if (!userSummary) setUserSummary("");
+        setAiSuggestions(null);
+        setAiCategory(null);
+      } else {
+        setUserTitle("");
+        setUserSummary("");
+        setAiSuggestions(null);
+        setAiCategory(null);
+      }
+    },
+    [getAISuggestions, userTitle, userSummary],
+  );
 
   // Handle image upload from editor
   const handleImageUpload = useCallback((image: UploadedImage) => {
@@ -137,13 +157,16 @@ export default function CreateNotePage() {
       originalName: image.originalName,
       uploadedAt: new Date().toISOString(),
     };
-    
-    setUploadedImages(prev => [...prev, noteImage]);
-    
+
+    setUploadedImages((prev) => [...prev, noteImage]);
+
     if (image.ocrText) {
-      toast.success(`🔍 Resimde metin bulundu: "${image.ocrText.substring(0, 50)}..."`, {
-        duration: 3000,
-      });
+      toast.success(
+        `🔍 Resimde metin bulundu: "${image.ocrText.substring(0, 50)}..."`,
+        {
+          duration: 3000,
+        },
+      );
     }
   }, []);
 
@@ -156,7 +179,7 @@ export default function CreateNotePage() {
     setIsSubmitting(true);
     try {
       const cleanText = getSearchableContent(content);
-      
+
       const finalTitle =
         userTitle ||
         aiSuggestions?.suggestedTitle ||
@@ -168,17 +191,10 @@ export default function CreateNotePage() {
         aiSuggestions?.suggestedSummary ||
         cleanText.substring(0, 200) + (cleanText.length > 200 ? "..." : "");
 
-      // Build searchContent with OCR text
-      let searchContent = cleanText;
-      if (uploadedImages.length > 0) {
-        const ocrTexts = uploadedImages
-          .filter(img => img.ocrText)
-          .map(img => img.ocrText)
-          .join(' ');
-        if (ocrTexts) {
-          searchContent += ' ' + ocrTexts;
-        }
-      }
+      // Build searchContent: only OCR text (no content duplication)
+      const searchContent = combineOcrTexts(
+        uploadedImages.map((img) => img.ocrText),
+      );
 
       const note = await noteAPI.createNoteWithAIMetadata({
         userId: user.id,
@@ -210,13 +226,15 @@ export default function CreateNotePage() {
 
       toast.success(
         `📝 Not başarıyla ${isEdited ? "düzenlenerek " : ""}kaydedildi!${uploadedImages.length > 0 ? ` (${uploadedImages.length} resim)` : ""}`,
-        { duration: 3000, icon: isEdited ? "✏️" : "🤖" }
+        { duration: 3000, icon: isEdited ? "✏️" : "🤖" },
       );
 
       router.push(`/notes/${note._id}`);
     } catch (error) {
       console.error("Not oluşturma hatası:", error);
-      toast.error("Not kaydedilemedi. Lütfen tekrar deneyin.", { duration: 4000 });
+      toast.error("Not kaydedilemedi. Lütfen tekrar deneyin.", {
+        duration: 4000,
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -242,9 +260,12 @@ export default function CreateNotePage() {
           <div className="bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-700 dark:to-indigo-800 px-8 py-6">
             <div className="flex justify-between items-center">
               <div>
-                <h1 className="text-2xl font-bold text-white">Yeni Not Oluştur</h1>
+                <h1 className="text-2xl font-bold text-white">
+                  Yeni Not Oluştur
+                </h1>
                 <p className="text-blue-100 dark:text-blue-300 mt-1">
-                  Markdown destekli • Resim ekleyebilirsiniz • AI otomatik analiz
+                  Markdown destekli • Resim ekleyebilirsiniz • AI otomatik
+                  analiz
                 </p>
               </div>
               <button
@@ -264,14 +285,15 @@ export default function CreateNotePage() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Başlık
                 </label>
-                {aiSuggestions && userTitle !== aiSuggestions.suggestedTitle && (
-                  <button
-                    onClick={() => setUserTitle(aiSuggestions.suggestedTitle)}
-                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
-                  >
-                    AI önerisine dön
-                  </button>
-                )}
+                {aiSuggestions &&
+                  userTitle !== aiSuggestions.suggestedTitle && (
+                    <button
+                      onClick={() => setUserTitle(aiSuggestions.suggestedTitle)}
+                      className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                      AI önerisine dön
+                    </button>
+                  )}
               </div>
               <input
                 type="text"
@@ -289,14 +311,17 @@ export default function CreateNotePage() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Özet
                 </label>
-                {aiSuggestions && userSummary !== aiSuggestions.suggestedSummary && (
-                  <button
-                    onClick={() => setUserSummary(aiSuggestions.suggestedSummary)}
-                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
-                  >
-                    AI önerisine dön
-                  </button>
-                )}
+                {aiSuggestions &&
+                  userSummary !== aiSuggestions.suggestedSummary && (
+                    <button
+                      onClick={() =>
+                        setUserSummary(aiSuggestions.suggestedSummary)
+                      }
+                      className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                      AI önerisine dön
+                    </button>
+                  )}
               </div>
               <textarea
                 value={userSummary}
@@ -355,8 +380,12 @@ export default function CreateNotePage() {
                     <div
                       className={`flex items-center gap-2 px-3 py-2 rounded-lg ${categoryInfo.colors.bg} ${categoryInfo.colors.text} border ${categoryInfo.colors.border}`}
                     >
-                      <span className="text-lg">{categoryInfo.category?.icon}</span>
-                      <span className="font-medium">{categoryInfo.categoryName}</span>
+                      <span className="text-lg">
+                        {categoryInfo.category?.icon}
+                      </span>
+                      <span className="font-medium">
+                        {categoryInfo.categoryName}
+                      </span>
                     </div>
                     <span className="text-gray-400">→</span>
                     <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600">
@@ -386,7 +415,14 @@ export default function CreateNotePage() {
             {/* Stats */}
             <div className="flex items-center justify-between gap-4 mb-8 text-sm text-gray-600 dark:text-gray-400">
               <div className="flex items-center gap-4">
-                <span>{getSearchableContent(content).split(/\s+/).filter((w) => w.length > 0).length} kelime</span>
+                <span>
+                  {
+                    getSearchableContent(content)
+                      .split(/\s+/)
+                      .filter((w) => w.length > 0).length
+                  }{" "}
+                  kelime
+                </span>
                 <span>{cleanTextLength} karakter</span>
                 <span>3 ay expire</span>
               </div>
@@ -420,7 +456,8 @@ export default function CreateNotePage() {
                 ) : (
                   <>
                     ✓ {aiSuggestions ? "AI ile Kaydet" : "Not Oluştur"}
-                    {uploadedImages.length > 0 && ` (${uploadedImages.length} 📷)`}
+                    {uploadedImages.length > 0 &&
+                      ` (${uploadedImages.length} 📷)`}
                   </>
                 )}
               </button>
