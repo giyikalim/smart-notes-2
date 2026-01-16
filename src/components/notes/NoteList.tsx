@@ -15,6 +15,7 @@ import {
   Edit,
   FileText,
   Frown,
+  Image as ImageIcon,
   Info,
   Meh,
   Plus,
@@ -425,6 +426,14 @@ export default function NoteList({ searchQuery = "" }: NoteListProps) {
                           )}
                         </div>
                       ) : null}
+
+                      {/* Image Badge */}
+                      {note.hasImages && note.imageCount && note.imageCount > 0 && (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-pink-50 dark:bg-pink-900/30 text-pink-700 dark:text-pink-300 border border-pink-200 dark:border-pink-800">
+                          <ImageIcon className="w-3 h-3 mr-1" />
+                          {note.imageCount}
+                        </span>
+                      )}
 
                       {/* Expire Status */}
                       <span

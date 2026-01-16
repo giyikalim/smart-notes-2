@@ -1,30 +1,55 @@
 // lib/elasticsearch-client.ts - Browser/Edge için
 const API_BASE_URL = "/api/elasticsearch";
 
+// Image metadata stored with note
+export interface NoteImage {
+  id: string;
+  // Private bucket - storage paths (not URLs)
+  storagePaths: {
+    original: string;
+    medium: string;
+    thumb: string;
+  };
+  ocrText: string | null;
+  ocrConfidence: number;
+  dimensions: {
+    width: number;
+    height: number;
+  };
+  originalName: string;
+  uploadedAt: string;
+}
+
 // Note interface with predefined category system
 export interface Note {
   _id?: string;
   id: string;
   userId: string;
   title: string;
-  content: string;
+  content: string; // Markdown content with {{img:uuid}} placeholders
+  searchContent?: string; // Plain text for search (no placeholders, includes OCR text)
   summary: string;
-  keywords: string[];  // Kept for search functionality
+  keywords: string[]; // Kept for search functionality
   createdAt: string;
   updatedAt?: string;
   expiresAt: string;
   relevanceScore?: number;
   similarityScore?: number;
   isExpired: boolean;
-  
+
   // Predefined Category System (2-level hierarchy)
-  category?: string;      // Main category: "tech-production", "work-career", etc.
-  subcategory?: string;   // Subcategory: "code-snippet", "meeting-minutes", etc.
-  
+  category?: string; // Main category: "tech-production", "work-career", etc.
+  subcategory?: string; // Subcategory: "code-snippet", "meeting-minutes", etc.
+
   // Category metadata
-  categoryAssignedAt?: string;        // When category was assigned
-  categoryAssignedBy?: 'ai' | 'user'; // Who assigned the category
-  
+  categoryAssignedAt?: string; // When category was assigned
+  categoryAssignedBy?: "ai" | "user"; // Who assigned the category
+
+  // Image data
+  images?: NoteImage[]; // Array of uploaded images
+  hasImages?: boolean; // Quick check flag
+  imageCount?: number; // Count for stats
+
   metadata: {
     wordCount: number;
     language: string;
@@ -61,6 +86,7 @@ export interface Note {
     content?: string[];
     summary?: string[];
     keywords?: string[];
+    searchContent?: string[]; // Also highlight searchContent
   };
   // You might also need these for search results
   _score?: number;
@@ -88,6 +114,7 @@ export interface AdvancedSearchOptions {
 export interface CreateNoteOptions {
   userId: string;
   content: string;
+  searchContent?: string; // Plain text for search (auto-generated if not provided)
   title?: string;
   summary?: string;
   language?: string;
@@ -103,6 +130,8 @@ export interface CreateNoteOptions {
     category: string;
     subcategory: string;
   };
+  // Image data
+  images?: NoteImage[];
 }
 
 // Category aggregation result for browse page
@@ -127,9 +156,11 @@ export interface UpdateNoteOptions {
   title?: string;
   summary?: string;
   content?: string;
+  searchContent?: string;
   isEditedByUser?: boolean;
   category?: string;
   subcategory?: string;
+  images?: NoteImage[];
 }
 
 // Elasticsearch için gelişmiş API client
@@ -161,12 +192,14 @@ class ElasticsearchNoteAPI {
     const {
       userId,
       content,
+      searchContent,
       title,
       summary,
       language = "tr",
       wordCount,
       aiSuggestions,
       categoryData,
+      images,
     } = options;
 
     // Expire tarihi (3 ay sonra)
@@ -204,12 +237,26 @@ class ElasticsearchNoteAPI {
     const keywords = await this.extractKeywordsWithElastic(content);
     const sentiment = await this.analyzeSentiment(content);
 
+    // Search content: plain text + OCR text
+    let finalSearchContent =
+      searchContent || content.replace(/\{\{img:[a-f0-9-]+\}\}/g, "").trim();
+    if (images && images.length > 0) {
+      const ocrTexts = images
+        .filter((img) => img.ocrText)
+        .map((img) => img.ocrText)
+        .join(" ");
+      if (ocrTexts) {
+        finalSearchContent += " " + ocrTexts;
+      }
+    }
+
     // Not objesi oluştur
     const note: Note = {
       id: `note_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       userId,
       title: finalTitle,
       content,
+      searchContent: finalSearchContent,
       summary: finalSummary,
       keywords,
       createdAt: new Date().toISOString(),
@@ -220,8 +267,15 @@ class ElasticsearchNoteAPI {
         category: categoryData.category,
         subcategory: categoryData.subcategory,
         categoryAssignedAt: new Date().toISOString(),
-        categoryAssignedBy: 'ai' as const,
+        categoryAssignedBy: "ai" as const,
       }),
+      // Image data
+      ...(images &&
+        images.length > 0 && {
+          images,
+          hasImages: true,
+          imageCount: images.length,
+        }),
       metadata: {
         wordCount: finalWordCount,
         language: finalLanguage,
@@ -305,7 +359,15 @@ class ElasticsearchNoteAPI {
 
   // Not güncelleme (başlık, özet, içerik)
   async updateNote(options: UpdateNoteOptions): Promise<Note> {
-    const { noteId, title, summary, content, isEditedByUser = true } = options;
+    const {
+      noteId,
+      title,
+      summary,
+      content,
+      searchContent,
+      isEditedByUser = true,
+      images,
+    } = options;
 
     // Önce notu bul
     const existingNote = await this.getNoteById(noteId);
@@ -339,6 +401,36 @@ class ElasticsearchNoteAPI {
       if (!summary) {
         updates.summary = await this.generateSummaryWithElastic(content);
       }
+    }
+
+    // SearchContent güncelleme (images varsa OCR text dahil)
+    if (searchContent) {
+      updates.searchContent = searchContent;
+    } else if (content) {
+      // Generate searchContent from content
+      let cleanContent = content.replace(/\{\{img:[a-f0-9-]+\}\}/g, "").trim();
+      if (images && images.length > 0) {
+        const ocrTexts = images
+          .filter((img) => img.ocrText)
+          .map((img) => img.ocrText)
+          .join(" ");
+        if (ocrTexts) {
+          cleanContent += " " + ocrTexts;
+        }
+      }
+      updates.searchContent = cleanContent;
+    }
+
+    // Images güncelleme
+    if (images !== undefined) {
+      // Merge existing images with new ones
+      const existingImages = existingNote.images || [];
+      const existingIds = new Set(existingImages.map((img) => img.id));
+      const newImages = images.filter((img) => !existingIds.has(img.id));
+
+      updates.images = [...existingImages, ...newImages];
+      updates.hasImages = updates.images.length > 0;
+      updates.imageCount = updates.images.length;
     }
 
     // Başlık güncelleme
@@ -1366,14 +1458,16 @@ class ElasticsearchNoteAPI {
     });
 
     const totalNotes = response.hits.total.value;
-    const notesWithCategory = response.aggregations.notes_with_category.doc_count;
+    const notesWithCategory =
+      response.aggregations.notes_with_category.doc_count;
     const totalCategories = response.aggregations.categories.buckets.length;
 
     return {
       totalNotes,
       totalCategories,
       notesWithCategory,
-      coveragePercentage: totalNotes > 0 ? Math.round((notesWithCategory / totalNotes) * 100) : 0,
+      coveragePercentage:
+        totalNotes > 0 ? Math.round((notesWithCategory / totalNotes) * 100) : 0,
       topCategories: response.aggregations.categories.buckets.map((b) => ({
         category: b.key,
         count: b.doc_count,
@@ -1385,7 +1479,9 @@ class ElasticsearchNoteAPI {
   /**
    * Get all categories with their subcategory counts
    */
-  async getCategoriesWithSubcategories(userId: string): Promise<CategoryAggregation[]> {
+  async getCategoriesWithSubcategories(
+    userId: string
+  ): Promise<CategoryAggregation[]> {
     const response = await this.request<{
       aggregations: {
         categories: {
@@ -1404,10 +1500,7 @@ class ElasticsearchNoteAPI {
         size: 0,
         query: {
           bool: {
-            must: [
-              { term: { userId } },
-              { exists: { field: "category" } },
-            ],
+            must: [{ term: { userId } }, { exists: { field: "category" } }],
             filter: [{ term: { isExpired: false } }],
           },
         },
@@ -1508,10 +1601,7 @@ class ElasticsearchNoteAPI {
         size: 0,
         query: {
           bool: {
-            must: [
-              { term: { userId } },
-              { term: { category } },
-            ],
+            must: [{ term: { userId } }, { term: { category } }],
             filter: [{ term: { isExpired: false } }],
           },
         },
@@ -1540,7 +1630,7 @@ class ElasticsearchNoteAPI {
     noteId: string,
     category: string,
     subcategory: string,
-    assignedBy: 'ai' | 'user' = 'user'
+    assignedBy: "ai" | "user" = "user"
   ): Promise<Note> {
     const existingNote = await this.getNoteById(noteId);
     if (!existingNote) {

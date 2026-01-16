@@ -1,6 +1,7 @@
 "use client";
 
 import AIQuickActions from "@/components/ai/AIQuickActions";
+import MilkdownEditor from "@/components/editor/MilkdownEditor";
 import {
   AI_WORKERS,
   getAICategory,
@@ -14,9 +15,18 @@ import {
   getCategoryColors,
   getCategoryName,
 } from "@/lib/categories";
-import { noteAPI } from "@/lib/elasticsearch-client";
+import { noteAPI, NoteImage } from "@/lib/elasticsearch-client";
+import { hasImages } from "@/lib/image-processor";
+import { UploadedImage } from "@/lib/image-uploader";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { FolderOpen, Loader2, RefreshCw, Tag } from "lucide-react";
+import {
+  AlertTriangle,
+  FolderOpen,
+  Image as ImageIcon,
+  Loader2,
+  RefreshCw,
+  Tag,
+} from "lucide-react";
 import { useLocale } from "next-intl";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -43,6 +53,10 @@ export default function FullscreenEditPage() {
   const [subcategory, setSubcategory] = useState<string | undefined>();
   const [isCategoryLoading, setIsCategoryLoading] = useState(false);
   const [categoryModified, setCategoryModified] = useState(false);
+
+  // Image state
+  const [uploadedImages, setUploadedImages] = useState<NoteImage[]>([]);
+  const contentHasImages = hasImages(content);
 
   // AI özellikleri
   const [aiSuggestions, setAiSuggestions] = useState<{
@@ -93,6 +107,11 @@ export default function FullscreenEditPage() {
         setSubcategory(note.subcategory);
       }
 
+      // Load images
+      if (note.images && note.images.length > 0) {
+        setUploadedImages(note.images);
+      }
+
       // Eğer AI metadata varsa, AI önerilerini yükle
       if (note.metadata?.aiMetadata) {
         setAiSuggestions((s) => ({
@@ -114,7 +133,7 @@ export default function FullscreenEditPage() {
 
     setIsCategoryLoading(true);
     try {
-      const result = await getAICategory(summary || content);
+      const result = await getAICategory(content);
       if (result.success && result.data) {
         setCategory(result.data.category);
         setSubcategory(result.data.subcategory);
@@ -352,6 +371,14 @@ export default function FullscreenEditPage() {
         },
       };
 
+      // Combine existing images with newly uploaded ones
+      const allImages = [
+        ...(note?.images || []),
+        ...uploadedImages.filter(
+          (img) => !note?.images?.some((existing) => existing.id === img.id)
+        ),
+      ];
+
       await noteAPI.updateNote({
         noteId,
         content,
@@ -360,6 +387,7 @@ export default function FullscreenEditPage() {
         isEditedByUser: true,
         category,
         subcategory,
+        images: allImages.length > 0 ? allImages : undefined,
       });
 
       // Update category if modified or if note doesn't have category yet
@@ -372,7 +400,7 @@ export default function FullscreenEditPage() {
         );
       } else if (!note?.category && content.length >= 20) {
         // Generate category for notes that don't have any
-        const catResult = await getAICategory(summary || content);
+        const catResult = await getAICategory(content);
         if (catResult.success && catResult.data) {
           await noteAPI.updateNoteCategory(
             noteId,
@@ -554,6 +582,7 @@ export default function FullscreenEditPage() {
                   onWorkerSelect={handleAIWorkerRequest}
                   onApplyResult={handleApplyAIResult}
                   recentResults={aiResults}
+                  hasImages={contentHasImages}
                 />
 
                 <button
@@ -821,13 +850,48 @@ export default function FullscreenEditPage() {
                     )}
                   </div>
                 </div>
-                <textarea
+
+                {/* Image warning for AI operations */}
+                {contentHasImages && (
+                  <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                    <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300 text-sm">
+                      <AlertTriangle className="w-4 h-4" />
+                      <span>
+                        Bu notta resim var. AI içerik düzenleme devre dışı.
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Image count badge */}
+                {uploadedImages.length > 0 && (
+                  <div className="mb-4 flex items-center gap-2 text-sm text-purple-600 dark:text-purple-400">
+                    <ImageIcon className="w-4 h-4" />
+                    <span>{uploadedImages.length} resim ekli</span>
+                  </div>
+                )}
+
+                <MilkdownEditor
                   value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  className="w-full h-full min-h-[calc(100vh-200px)] px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-800 resize-none text-base md:text-lg placeholder-gray-500 dark:placeholder-gray-400"
-                  placeholder="Notunuzu buraya yazın... (Ctrl+S: Kaydet, Esc: Çık, Ctrl+M: Metaveri, F11: Tam Ekran)"
-                  autoFocus={!isContentExpanded}
+                  onChange={setContent}
+                  onImageUpload={(image: UploadedImage) => {
+                    const noteImage: NoteImage = {
+                      id: image.id,
+                      storagePaths: image.storagePaths,
+                      ocrText: image.ocrText,
+                      ocrConfidence: image.ocrConfidence,
+                      dimensions: image.dimensions,
+                      originalName: image.originalName,
+                      uploadedAt: new Date().toISOString(),
+                    };
+                    setUploadedImages((prev) => [...prev, noteImage]);
+                    toast.success("Resim eklendi!");
+                  }}
+                  placeholder="Notunuzu buraya yazın... (Markdown destekli, resim ekleyebilirsiniz)"
+                  minHeight="calc(100vh - 300px)"
+                  disabled={isSaving}
                 />
+
                 {isContentExpanded && (
                   <div className="absolute bottom-4 right-4 flex gap-2">
                     <button

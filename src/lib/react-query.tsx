@@ -14,10 +14,10 @@ export function ReactQueryProvider({
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 60 * 1000, // 1 minute
+            staleTime: 30 * 1000, // 30 seconds - daha kısa
             retry: 1,
-            refetchOnWindowFocus: false,
-            refetchOnMount: true,
+            refetchOnWindowFocus: true, // Tab'a dönünce refetch
+            refetchOnMount: true,  // Mount'ta stale ise refetch YAP
             gcTime: 5 * 60 * 1000, // 5 minutes
           },
         },

@@ -1,12 +1,9 @@
 // app/api/ai/categorize/route.ts
-import { isValidCategory, isValidSubcategory } from "@/lib/categories";
 import { NextRequest, NextResponse } from "next/server";
+import { CATEGORIES, isValidCategory, isValidSubcategory } from "@/lib/categories";
 
-//const CLOUDFLARE_WORKER_URL =
-//"https://ai-suggest-category-openai.alimgiyik.workers.dev/";
-const CLOUDFLARE_WORKER_URL =
-  "https://ai-suggest-category-openai.alimgiyik.workers.dev/";
-const CLOUDFLARE_API_KEY = process.env.CLOUDFLARE_WORKER_API_KEY;
+const CLOUDFLARE_WORKER_URL = process.env.CLOUDFLARE_CATEGORIZE_WORKER_URL;
+const CLOUDFLARE_API_KEY = process.env.CLOUDFLARE_CATEGORIZE_API_KEY;
 
 export interface CategoryResult {
   success: boolean;
@@ -39,9 +36,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(generateFallbackCategory(text));
     }
 
-    const words = text.trim().split(/\s+/);
-    const firstNwords = words.length > 20 ? words.slice(0, 20).join(" ") : text;
-
     // Call Cloudflare Worker
     const response = await fetch(CLOUDFLARE_WORKER_URL, {
       method: "POST",
@@ -49,7 +43,7 @@ export async function POST(request: NextRequest) {
         "Content-Type": "application/json",
         Authorization: `Bearer ${CLOUDFLARE_API_KEY}`,
       },
-      body: JSON.stringify({ text: firstNwords }),
+      body: JSON.stringify({ text: text.substring(0, 1000) }),
     });
 
     if (!response.ok) {
@@ -58,12 +52,12 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await response.json();
-
+    
     // Validate the response
     if (result.success && result.mainCategory && result.subCategory) {
       // Verify categories are valid
-      const category = isValidCategory(result.mainCategory)
-        ? result.mainCategory
+      const category = isValidCategory(result.mainCategory) 
+        ? result.mainCategory 
         : "log-archive";
       const subcategory = isValidSubcategory(category, result.subCategory)
         ? result.subCategory
@@ -103,195 +97,39 @@ function generateFallbackCategory(text: string): CategoryResult {
   const lowerText = text.toLowerCase();
 
   // Category detection keywords
-  const categoryKeywords: Record<
-    string,
-    { keywords: string[]; defaultSub: string }
-  > = {
+  const categoryKeywords: Record<string, { keywords: string[]; defaultSub: string }> = {
     "tech-production": {
-      keywords: [
-        "code",
-        "function",
-        "const",
-        "let",
-        "var",
-        "import",
-        "export",
-        "class",
-        "def ",
-        "async",
-        "await",
-        "return",
-        "sql",
-        "select",
-        "insert",
-        "database",
-        "query",
-        "api",
-        "http",
-        "javascript",
-        "python",
-        "react",
-        "node",
-        "npm",
-        "git",
-        "docker",
-        "linux",
-        "server",
-        "html",
-        "css",
-        "json",
-        "programlama",
-        "kod",
-        "yazılım",
-        "bug",
-        "error",
-        "debug",
-      ],
-      defaultSub: "code-snippet",
+      keywords: ["code", "function", "const", "let", "var", "import", "export", "class", "def ", "async", "await", "return", "sql", "select", "insert", "database", "query", "api", "http", "javascript", "python", "react", "node", "npm", "git", "docker", "linux", "server", "html", "css", "json", "programlama", "kod", "yazılım", "bug", "error", "debug"],
+      defaultSub: "code-snippet"
     },
     "work-career": {
-      keywords: [
-        "meeting",
-        "project",
-        "deadline",
-        "client",
-        "team",
-        "manager",
-        "office",
-        "work",
-        "job",
-        "task",
-        "sprint",
-        "agile",
-        "toplantı",
-        "proje",
-        "iş",
-        "müşteri",
-        "presentation",
-        "report",
-        "sunum",
-        "rapor",
-      ],
-      defaultSub: "project-plan",
+      keywords: ["meeting", "project", "deadline", "client", "team", "manager", "office", "work", "job", "task", "sprint", "agile", "toplantı", "proje", "iş", "müşteri", "presentation", "report", "sunum", "rapor"],
+      defaultSub: "project-plan"
     },
     "personal-growth": {
-      keywords: [
-        "learn",
-        "study",
-        "course",
-        "tutorial",
-        "lesson",
-        "education",
-        "school",
-        "university",
-        "öğren",
-        "ders",
-        "kurs",
-        "eğitim",
-        "okul",
-        "book",
-        "kitap",
-        "research",
-        "araştırma",
-      ],
-      defaultSub: "study-notes",
+      keywords: ["learn", "study", "course", "tutorial", "lesson", "education", "school", "university", "öğren", "ders", "kurs", "eğitim", "okul", "book", "kitap", "research", "araştırma"],
+      defaultSub: "study-notes"
     },
     "projects-planning": {
-      keywords: [
-        "idea",
-        "plan",
-        "brainstorm",
-        "goal",
-        "strategy",
-        "fikir",
-        "hedef",
-        "strateji",
-        "düşün",
-        "project idea",
-        "proje fikri",
-        "vision",
-        "vizyon",
-      ],
-      defaultSub: "brainstorm",
+      keywords: ["idea", "plan", "brainstorm", "goal", "strategy", "fikir", "hedef", "strateji", "düşün", "project idea", "proje fikri", "vision", "vizyon"],
+      defaultSub: "brainstorm"
     },
     "finance-management": {
-      keywords: [
-        "money",
-        "budget",
-        "invest",
-        "stock",
-        "bank",
-        "salary",
-        "expense",
-        "para",
-        "bütçe",
-        "yatırım",
-        "maaş",
-        "fatura",
-        "bill",
-        "price",
-        "fiyat",
-      ],
-      defaultSub: "budget-track",
+      keywords: ["money", "budget", "invest", "stock", "bank", "salary", "expense", "para", "bütçe", "yatırım", "maaş", "fatura", "bill", "price", "fiyat"],
+      defaultSub: "budget-track"
     },
     "life-organization": {
-      keywords: [
-        "shopping",
-        "alışveriş",
-        "home",
-        "ev",
-        "appointment",
-        "randevu",
-        "recipe",
-        "tarif",
-        "yemek",
-        "cook",
-        "pişir",
-        "list",
-        "liste",
-        "pack",
-        "bavul",
-      ],
-      defaultSub: "shopping-list",
+      keywords: ["shopping", "alışveriş", "home", "ev", "appointment", "randevu", "recipe", "tarif", "yemek", "cook", "pişir", "list", "liste", "pack", "bavul"],
+      defaultSub: "shopping-list"
     },
     "health-wellbeing": {
-      keywords: [
-        "health",
-        "doctor",
-        "medicine",
-        "exercise",
-        "fitness",
-        "gym",
-        "diet",
-        "sağlık",
-        "doktor",
-        "ilaç",
-        "egzersiz",
-        "spor",
-        "diyet",
-        "sleep",
-        "uyku",
-        "symptom",
-        "semptom",
-      ],
-      defaultSub: "fitness-track",
+      keywords: ["health", "doctor", "medicine", "exercise", "fitness", "gym", "diet", "sağlık", "doktor", "ilaç", "egzersiz", "spor", "diyet", "sleep", "uyku", "symptom", "semptom"],
+      defaultSub: "fitness-track"
     },
     "log-archive": {
-      keywords: [
-        "diary",
-        "günlük",
-        "journal",
-        "note",
-        "not",
-        "remember",
-        "hatırla",
-        "bookmark",
-        "link",
-        "memory",
-        "anı",
-      ],
-      defaultSub: "quick-note",
-    },
+      keywords: ["diary", "günlük", "journal", "note", "not", "remember", "hatırla", "bookmark", "link", "memory", "anı"],
+      defaultSub: "quick-note"
+    }
   };
 
   // Find matching category
@@ -300,9 +138,7 @@ function generateFallbackCategory(text: string): CategoryResult {
   let maxMatches = 0;
 
   for (const [category, config] of Object.entries(categoryKeywords)) {
-    const matches = config.keywords.filter((kw) =>
-      lowerText.includes(kw)
-    ).length;
+    const matches = config.keywords.filter(kw => lowerText.includes(kw)).length;
     if (matches > maxMatches) {
       maxMatches = matches;
       matchedCategory = category;

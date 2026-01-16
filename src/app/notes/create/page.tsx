@@ -1,23 +1,18 @@
 "use client";
 
-import {
-  AICategoryResult,
-  getAICategory,
-  getAISuggestion,
-} from "@/lib/ai-helper";
+import { getAISuggestion, getAICategory, AICategoryResult } from "@/lib/ai-helper";
 import { useAuth } from "@/lib/auth";
-import {
-  CATEGORIES,
-  getCategoryColors,
-  getCategoryName,
-} from "@/lib/categories";
-import { noteAPI } from "@/lib/elasticsearch-client";
+import { noteAPI, NoteImage } from "@/lib/elasticsearch-client";
+import { CATEGORIES, getCategoryName, getCategoryColors } from "@/lib/categories";
+import { getSearchableContent, hasImages } from "@/lib/image-processor";
+import MilkdownEditor from "@/components/editor/MilkdownEditor";
 import debounce from "lodash/debounce";
-import { FolderOpen, Loader2, Tag } from "lucide-react";
-import { useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useCallback, useState, useRef } from "react";
 import toast from "react-hot-toast";
+import { useLocale } from "next-intl";
+import { FolderOpen, Tag, Loader2, Image as ImageIcon, AlertCircle } from "lucide-react";
+import { UploadedImage } from "@/lib/image-uploader";
 
 export default function CreateNotePage() {
   const { user } = useAuth();
@@ -43,10 +38,19 @@ export default function CreateNotePage() {
   // AI Category
   const [aiCategory, setAiCategory] = useState<AICategoryResult | null>(null);
 
-  // Debounced AI suggestion
+  // Uploaded images
+  const [uploadedImages, setUploadedImages] = useState<NoteImage[]>([]);
+  
+  // Track if content has images
+  const contentHasImages = hasImages(content);
+
+  // Debounced AI suggestion - use searchable content (without image placeholders)
   const getAISuggestions = useCallback(
     debounce(async (text: string) => {
-      if (text.length < 30) {
+      // Get clean text for AI analysis
+      const cleanText = getSearchableContent(text);
+      
+      if (cleanText.length < 30) {
         setAiSuggestions(null);
         setAiCategory(null);
         return;
@@ -56,8 +60,11 @@ export default function CreateNotePage() {
       setIsCategoryLoading(true);
 
       try {
-        // Parallel API calls for suggestions and category
-        const suggestion = await getAISuggestion(text);
+        // Use clean text for AI analysis
+        const [suggestion, category] = await Promise.all([
+          getAISuggestion(cleanText),
+          getAICategory(cleanText),
+        ]);
 
         if (suggestion.success) {
           const aiSuggestion = {
@@ -69,9 +76,8 @@ export default function CreateNotePage() {
 
           setAiSuggestions(aiSuggestion);
 
-          // Kullanıcı düzenlemediyse AI önerisini göster
-          setUserTitle(aiSuggestion.suggestedTitle);
-          setUserSummary(aiSuggestion.suggestedSummary);
+          if (!userTitle) setUserTitle(aiSuggestion.suggestedTitle);
+          if (!userSummary) setUserSummary(aiSuggestion.suggestedSummary);
 
           const languageEmoji = suggestion.language === "tr" ? "🇹🇷" : "🇬🇧";
           toast.success(`${languageEmoji} AI başlık ve özet oluşturuldu!`, {
@@ -79,11 +85,8 @@ export default function CreateNotePage() {
           });
         }
 
-        if (!aiCategory) {
-          const category = await getAICategory(text);
-          if (category.success && category.data) {
-            setAiCategory(category);
-          }
+        if (category.success && category.data) {
+          setAiCategory(category);
         }
       } catch (error) {
         console.error("AI suggestion error:", error);
@@ -98,19 +101,51 @@ export default function CreateNotePage() {
     [userTitle, userSummary]
   );
 
-  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const text = e.target.value;
-    setContent(text);
+  // Handle content change from editor
+  const handleContentChange = useCallback((newContent: string) => {
+    setContent(newContent);
 
-    if (text.trim() && text.length >= 30) {
-      getAISuggestions(text);
+    const cleanText = getSearchableContent(newContent);
+    
+    if (cleanText.trim() && cleanText.length >= 30) {
+      getAISuggestions(newContent);
+    } else if (cleanText.trim()) {
+      const firstLine = cleanText.split("\n")[0];
+      const simpleTitle =
+        firstLine.length > 50 ? firstLine.substring(0, 50) + "..." : firstLine;
+
+      if (!userTitle) setUserTitle(simpleTitle);
+      if (!userSummary) setUserSummary("");
+      setAiSuggestions(null);
+      setAiCategory(null);
     } else {
       setUserTitle("");
       setUserSummary("");
       setAiSuggestions(null);
       setAiCategory(null);
     }
-  };
+  }, [getAISuggestions, userTitle, userSummary]);
+
+  // Handle image upload from editor
+  const handleImageUpload = useCallback((image: UploadedImage) => {
+    const noteImage: NoteImage = {
+      id: image.id,
+      storagePaths: image.storagePaths,
+      ocrText: image.ocrText,
+      ocrConfidence: image.ocrConfidence,
+      dimensions: image.dimensions,
+      originalName: image.originalName,
+      uploadedAt: new Date().toISOString(),
+    };
+    
+    setUploadedImages(prev => [...prev, noteImage]);
+    
+    if (image.ocrText) {
+      toast.success(`🔍 Resimde metin bulundu: "${image.ocrText.substring(0, 50)}..."`, {
+        duration: 3000,
+      });
+    }
+  }, []);
 
   const handleSubmit = async () => {
     if (!user || !content.trim()) {
@@ -120,20 +155,35 @@ export default function CreateNotePage() {
 
     setIsSubmitting(true);
     try {
+      const cleanText = getSearchableContent(content);
+      
       const finalTitle =
         userTitle ||
         aiSuggestions?.suggestedTitle ||
-        content.split("\n")[0].substring(0, 60) +
-          (content.split("\n")[0].length > 60 ? "..." : "");
+        cleanText.split("\n")[0].substring(0, 60) +
+          (cleanText.split("\n")[0].length > 60 ? "..." : "");
 
       const finalSummary =
         userSummary ||
         aiSuggestions?.suggestedSummary ||
-        content.substring(0, 200) + (content.length > 200 ? "..." : "");
+        cleanText.substring(0, 200) + (cleanText.length > 200 ? "..." : "");
+
+      // Build searchContent with OCR text
+      let searchContent = cleanText;
+      if (uploadedImages.length > 0) {
+        const ocrTexts = uploadedImages
+          .filter(img => img.ocrText)
+          .map(img => img.ocrText)
+          .join(' ');
+        if (ocrTexts) {
+          searchContent += ' ' + ocrTexts;
+        }
+      }
 
       const note = await noteAPI.createNoteWithAIMetadata({
         userId: user.id,
         content,
+        searchContent,
         title: finalTitle,
         summary: finalSummary,
         language: aiSuggestions?.language || "tr",
@@ -153,21 +203,20 @@ export default function CreateNotePage() {
                 subcategory: aiCategory.data.subcategory,
               }
             : undefined,
+        images: uploadedImages.length > 0 ? uploadedImages : undefined,
       });
 
       const isEdited = userTitle && userTitle !== aiSuggestions?.suggestedTitle;
 
       toast.success(
-        `📝 Not başarıyla ${isEdited ? "düzenlenerek " : ""}kaydedildi!`,
+        `📝 Not başarıyla ${isEdited ? "düzenlenerek " : ""}kaydedildi!${uploadedImages.length > 0 ? ` (${uploadedImages.length} resim)` : ""}`,
         { duration: 3000, icon: isEdited ? "✏️" : "🤖" }
       );
 
       router.push(`/notes/${note._id}`);
     } catch (error) {
       console.error("Not oluşturma hatası:", error);
-      toast.error("Not kaydedilemedi. Lütfen tekrar deneyin.", {
-        duration: 4000,
-      });
+      toast.error("Not kaydedilemedi. Lütfen tekrar deneyin.", { duration: 4000 });
     } finally {
       setIsSubmitting(false);
     }
@@ -183,19 +232,19 @@ export default function CreateNotePage() {
       }
     : null;
 
+  const cleanTextLength = getSearchableContent(content).length;
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 py-12">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 py-8">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl overflow-hidden">
           {/* Header */}
           <div className="bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-700 dark:to-indigo-800 px-8 py-6">
             <div className="flex justify-between items-center">
               <div>
-                <h1 className="text-2xl font-bold text-white">
-                  Yeni Not Oluştur
-                </h1>
+                <h1 className="text-2xl font-bold text-white">Yeni Not Oluştur</h1>
                 <p className="text-blue-100 dark:text-blue-300 mt-1">
-                  AI önerilerini kabul edin veya kendiniz düzenleyin
+                  Markdown destekli • Resim ekleyebilirsiniz • AI otomatik analiz
                 </p>
               </div>
               <button
@@ -215,15 +264,14 @@ export default function CreateNotePage() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Başlık
                 </label>
-                {aiSuggestions &&
-                  userTitle !== aiSuggestions.suggestedTitle && (
-                    <button
-                      onClick={() => setUserTitle(aiSuggestions.suggestedTitle)}
-                      className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
-                    >
-                      AI önerisine dön
-                    </button>
-                  )}
+                {aiSuggestions && userTitle !== aiSuggestions.suggestedTitle && (
+                  <button
+                    onClick={() => setUserTitle(aiSuggestions.suggestedTitle)}
+                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                  >
+                    AI önerisine dön
+                  </button>
+                )}
               </div>
               <input
                 type="text"
@@ -241,17 +289,14 @@ export default function CreateNotePage() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Özet
                 </label>
-                {aiSuggestions &&
-                  userSummary !== aiSuggestions.suggestedSummary && (
-                    <button
-                      onClick={() =>
-                        setUserSummary(aiSuggestions.suggestedSummary)
-                      }
-                      className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
-                    >
-                      AI önerisine dön
-                    </button>
-                  )}
+                {aiSuggestions && userSummary !== aiSuggestions.suggestedSummary && (
+                  <button
+                    onClick={() => setUserSummary(aiSuggestions.suggestedSummary)}
+                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                  >
+                    AI önerisine dön
+                  </button>
+                )}
               </div>
               <textarea
                 value={userSummary}
@@ -261,6 +306,27 @@ export default function CreateNotePage() {
                 className="w-full px-4 py-3 border-2 border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 resize-none"
                 disabled={isSubmitting}
               />
+            </div>
+
+            {/* AI Status Bar */}
+            <div className="mb-6 flex flex-wrap items-center gap-4">
+              {isAILoading && (
+                <div className="flex items-center text-sm text-blue-600 dark:text-blue-400">
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  AI analiz ediyor...
+                </div>
+              )}
+              {aiSuggestions && !isAILoading && (
+                <div className="flex items-center text-sm text-green-600 dark:text-green-400">
+                  ✓ AI analizi tamamlandı
+                </div>
+              )}
+              {uploadedImages.length > 0 && (
+                <div className="flex items-center text-sm text-purple-600 dark:text-purple-400">
+                  <ImageIcon className="w-4 h-4 mr-1" />
+                  {uploadedImages.length} resim eklendi
+                </div>
+              )}
             </div>
 
             {/* AI Category Section */}
@@ -289,12 +355,8 @@ export default function CreateNotePage() {
                     <div
                       className={`flex items-center gap-2 px-3 py-2 rounded-lg ${categoryInfo.colors.bg} ${categoryInfo.colors.text} border ${categoryInfo.colors.border}`}
                     >
-                      <span className="text-lg">
-                        {categoryInfo.category?.icon}
-                      </span>
-                      <span className="font-medium">
-                        {categoryInfo.categoryName}
-                      </span>
+                      <span className="text-lg">{categoryInfo.category?.icon}</span>
+                      <span className="font-medium">{categoryInfo.categoryName}</span>
                     </div>
                     <span className="text-gray-400">→</span>
                     <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600">
@@ -306,42 +368,32 @@ export default function CreateNotePage() {
               </div>
             )}
 
-            {/* Not İçeriği */}
+            {/* Milkdown Editor */}
             <div className="mb-6">
-              <div className="flex justify-between items-center mb-2">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Not İçeriği *
-                </label>
-                {isAILoading && (
-                  <div className="flex items-center text-xs text-blue-600 dark:text-blue-400">
-                    <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                    AI analiz ediyor...
-                  </div>
-                )}
-              </div>
-              <textarea
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Not İçeriği *
+              </label>
+              <MilkdownEditor
                 value={content}
                 onChange={handleContentChange}
-                placeholder="Notunuzu buraya yazın... (en az 30 karakter)"
-                className="w-full h-64 p-4 border-2 border-gray-300 dark:border-gray-700 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800"
+                onImageUpload={handleImageUpload}
+                placeholder="Notunuzu buraya yazın... (Markdown destekli, resim ekleyebilirsiniz)"
+                minHeight="350px"
                 disabled={isSubmitting}
-                autoFocus
               />
             </div>
 
             {/* Stats */}
             <div className="flex items-center justify-between gap-4 mb-8 text-sm text-gray-600 dark:text-gray-400">
               <div className="flex items-center gap-4">
-                <span>
-                  {content.split(/\s+/).filter((w) => w.length > 0).length}{" "}
-                  kelime
-                </span>
-                <span>{content.length} karakter</span>
+                <span>{getSearchableContent(content).split(/\s+/).filter((w) => w.length > 0).length} kelime</span>
+                <span>{cleanTextLength} karakter</span>
                 <span>3 ay expire</span>
               </div>
-              {aiSuggestions && (
-                <span className="text-green-600 dark:text-green-400">
-                  ✓ AI analizi tamamlandı
+              {cleanTextLength < 30 && (
+                <span className="text-amber-600 dark:text-amber-400">
+                  <AlertCircle className="w-4 h-4 inline mr-1" />
+                  AI analizi için en az 30 karakter
                 </span>
               )}
             </div>
@@ -366,7 +418,10 @@ export default function CreateNotePage() {
                     Kaydediliyor...
                   </>
                 ) : (
-                  <>✓ {aiSuggestions ? "AI ile Kaydet" : "Not Oluştur"}</>
+                  <>
+                    ✓ {aiSuggestions ? "AI ile Kaydet" : "Not Oluştur"}
+                    {uploadedImages.length > 0 && ` (${uploadedImages.length} 📷)`}
+                  </>
                 )}
               </button>
             </div>
