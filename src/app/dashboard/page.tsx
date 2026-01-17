@@ -1,5 +1,6 @@
 "use client";
 
+import { AIUsageBanner } from "@/components/ai/AIUsageIndicator";
 import UserMenu from "@/components/auth/UserMenu";
 import QuickStats from "@/components/dashboard/QuickStats";
 import NoteList from "@/components/notes/NoteList";
@@ -126,6 +127,9 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/30 dark:from-gray-900 dark:to-gray-800/30">
+      {/* AI Usage Banner */}
+      <AIUsageBanner />
+
       {/* Header */}
       <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

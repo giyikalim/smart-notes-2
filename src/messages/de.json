@@ -143,11 +143,56 @@
     "edit": "AI-Bearbeitung",
     "organize": "AI-Organisation"
   },
+  "settings": {
+    "title": "Einstellungen",
+    "subtitle": "Verwalten Sie Ihre App-Einstellungen",
+    "theme": "Thema",
+    "themeDescription": "Wahlen Sie das App-Aussehen",
+    "language": "Sprache",
+    "languageDescription": "Wahlen Sie die Oberflachensprache",
+    "readingMode": "Lesemodus",
+    "readingModeDescription": "Wahlen Sie den Standard-Lesemodus",
+    "comfortable": "Komfortabel",
+    "compact": "Kompakt"
+  },
+  "profile": {
+    "title": "Mein Profil",
+    "subtitle": "Verwalten Sie Ihre Kontoinformationen",
+    "personalInfo": "Personliche Informationen",
+    "fullName": "Vollstandiger Name",
+    "enterFullName": "Geben Sie Ihren Namen ein",
+    "email": "E-Mail",
+    "memberSince": "Mitglied seit",
+    "noName": "Name nicht festgelegt",
+    "notSet": "Nicht festgelegt",
+    "verified": "Verifiziert",
+    "connectedAccounts": "Verbundene Konten",
+    "connected": "Verbunden",
+    "clickToChangeAvatar": "Klicken Sie, um den Avatar zu andern",
+    "saveSuccess": "Profil aktualisiert",
+    "saveError": "Profil konnte nicht aktualisiert werden",
+    "avatarUpdated": "Avatar aktualisiert",
+    "avatarUploadError": "Avatar konnte nicht hochgeladen werden",
+    "invalidImageType": "Ungultiges Bildformat",
+    "imageTooLarge": "Das Bild muss kleiner als 2MB sein"
+  },
+  "aiUsage": {
+    "dailyUsage": "Tagliche AI-Nutzung",
+    "words": "Worter",
+    "wordsRemaining": "{count} Worter ubrig",
+    "limitReached": "Limit erreicht",
+    "limitReachedMessage": "Ihr tagliches AI-Nutzungslimit wurde erreicht. Versuchen Sie es morgen erneut.",
+    "nearLimitMessage": "Achtung! Nur noch {count} Worter ubrig.",
+    "usageNormal": "Sie konnen {count} Worter verwenden.",
+    "resetsDaily": "Wird taglich zuruckgesetzt",
+    "bannerLimitReached": "Ihr tagliches AI-Nutzungslimit wurde erreicht. AI-Funktionen sind morgen wieder verfugbar.",
+    "bannerNearLimit": "Achtung! Sie haben 80% Ihres taglichen AI-Limits verbraucht. {count} Worter ubrig."
+  },
   "stats": {
     "totalNotes": "Gesamtnotizen",
     "thisWeek": "Diese Woche",
     "categories": "Kategorien",
-    "expiringSoon": "Läuft bald ab"
+    "expiringSoon": "Lauft bald ab"
   },
   "browse": {
     "title": "Notizen durchsuchen",

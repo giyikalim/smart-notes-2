@@ -2,7 +2,7 @@
 
 import { useAuth } from "@/lib/auth";
 import { Note, noteAPI } from "@/lib/elasticsearch-client";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { tr } from "date-fns/locale";
 import {
@@ -67,6 +67,7 @@ export default function NoteList({ searchQuery = "" }: NoteListProps) {
   const { user } = useAuth();
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const {
     data,
@@ -122,7 +123,23 @@ export default function NoteList({ searchQuery = "" }: NoteListProps) {
     try {
       await noteAPI.deleteNote(noteId);
       toast.success("Not başarıyla silindi!");
-      refetch();
+
+      // Optimistically remove the note from cache immediately
+      // This provides instant UI feedback without waiting for Elasticsearch to refresh
+      queryClient.setQueryData(
+        ["notes", user?.id, searchQuery],
+        (oldData: any) => {
+          if (!oldData) return oldData;
+          return {
+            ...oldData,
+            pages: oldData.pages.map((page: any) => ({
+              ...page,
+              notes: page.notes.filter((note: Note) => note.id !== noteId),
+              total: page.total - 1,
+            })),
+          };
+        },
+      );
     } catch (error) {
       console.error("Not silme hatası:", error);
       toast.error("Not silinirken bir hata oluştu.");

@@ -143,11 +143,56 @@
     "edit": "AI Düzenleme",
     "organize": "AI Organizasyon"
   },
+  "settings": {
+    "title": "Ayarlar",
+    "subtitle": "Uygulama tercihlerinizi yonetin",
+    "theme": "Tema",
+    "themeDescription": "Uygulama gorunumunu secin",
+    "language": "Dil",
+    "languageDescription": "Arayuz dilini secin",
+    "readingMode": "Okuma Modu",
+    "readingModeDescription": "Varsayilan okuma modunu secin",
+    "comfortable": "Rahat",
+    "compact": "Kompakt"
+  },
+  "profile": {
+    "title": "Profilim",
+    "subtitle": "Hesap bilgilerinizi yonetin",
+    "personalInfo": "Kisisel Bilgiler",
+    "fullName": "Ad Soyad",
+    "enterFullName": "Adinizi girin",
+    "email": "E-posta",
+    "memberSince": "Uyelik Tarihi",
+    "noName": "Isim belirlenmedi",
+    "notSet": "Belirlenmedi",
+    "verified": "Dogrulanmis",
+    "connectedAccounts": "Bagli Hesaplar",
+    "connected": "Bagli",
+    "clickToChangeAvatar": "Avatari degistirmek icin tiklayin",
+    "saveSuccess": "Profil guncellendi",
+    "saveError": "Profil guncellenemedi",
+    "avatarUpdated": "Avatar guncellendi",
+    "avatarUploadError": "Avatar yuklenemedi",
+    "invalidImageType": "Gecersiz resim formati",
+    "imageTooLarge": "Resim 2MB'den kucuk olmali"
+  },
+  "aiUsage": {
+    "dailyUsage": "Gunluk AI Kullanimi",
+    "words": "kelime",
+    "wordsRemaining": "{count} kelime kaldi",
+    "limitReached": "Limit Doldu",
+    "limitReachedMessage": "Gunluk AI kullanim limitiniz doldu. Yarin tekrar deneyin.",
+    "nearLimitMessage": "Dikkat! Sadece {count} kelime kaldi.",
+    "usageNormal": "{count} kelime kullanabilirsiniz.",
+    "resetsDaily": "Her gun sifirlanir",
+    "bannerLimitReached": "Gunluk AI kullanim limitiniz doldu. AI ozellikleri yarin tekrar aktif olacak.",
+    "bannerNearLimit": "Dikkat! Gunluk AI limitinizin %80'ini kullandiniz. {count} kelime kaldi."
+  },
   "stats": {
     "totalNotes": "Toplam Not",
     "thisWeek": "Bu Hafta",
     "categories": "Kategoriler",
-    "expiringSoon": "Yakında Sona Erecek"
+    "expiringSoon": "Yakinda Sona Erecek"
   },
   "browse": {
     "title": "Notlara Göz At",

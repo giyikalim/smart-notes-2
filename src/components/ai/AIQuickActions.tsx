@@ -2,6 +2,7 @@
 "use client";
 
 import { AI_WORKERS } from "@/lib/ai-helper";
+import { countWords, DAILY_WORD_LIMIT, useAIUsage } from "@/lib/ai-usage";
 import {
   AlertTriangle,
   CheckCircle,
@@ -11,7 +12,9 @@ import {
   Sparkles,
   Wand2,
   X,
+  Zap,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 interface AIQuickActionsProps {
@@ -37,6 +40,16 @@ export default function AIQuickActions({
   const [selectedWorker, setSelectedWorker] = useState<string | null>(null);
   const [localResults, setLocalResults] =
     useState<Record<string, any>>(recentResults);
+
+  // AI Usage tracking
+  const {
+    isLimitReached,
+    remainingWords,
+    usagePercentage,
+    trackUsage,
+    canUseAI,
+  } = useAIUsage();
+  const t = useTranslations("aiUsage");
 
   // Content modifying workers (disabled when hasImages)
   const contentModifyingWorkers = ["edit", "organize"];
@@ -68,6 +81,11 @@ export default function AIQuickActions({
       return;
     }
 
+    // Check AI usage limits
+    if (isLimitReached || !canUseAI()) {
+      return;
+    }
+
     // Block content-modifying workers if content has images
     if (hasImages && contentModifyingWorkers.includes(workerId)) {
       return;
@@ -89,14 +107,11 @@ export default function AIQuickActions({
         setLocalResults((prev) => ({ ...prev, [workerId]: result }));
       }
 
-      // Başarılıysa modal'ı kapat
+      // Başarılıysa kullanımı kaydet ve modal'ı kapat
       if (result?.success) {
-        /*setTimeout(() => {
-          setIsOpen(false);
-          setSelectedWorker(null);
-          setIsProcessing(false);
-          setCurrentWorker(null);
-        }, 1500);*/
+        // Track AI usage - count words from input content
+        const wordsUsed = countWords(result.content || content);
+        await trackUsage(wordsUsed);
 
         setIsProcessing(false);
         setCurrentWorker(null);
@@ -199,12 +214,20 @@ export default function AIQuickActions({
       <div className="relative">
         <button
           onClick={() => setIsOpen(true)}
-          disabled={content.length < 10}
-          className="group relative px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-500 dark:to-pink-500 hover:from-purple-700 hover:to-pink-700 text-white rounded-lg font-medium disabled:opacity-50 transition-all flex items-center shadow-lg hover:shadow-xl active:scale-95"
+          disabled={content.length < 10 || isLimitReached}
+          className={`group relative px-4 py-2 ${
+            isLimitReached
+              ? "bg-gray-400 dark:bg-gray-600 cursor-not-allowed"
+              : "bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-500 dark:to-pink-500 hover:from-purple-700 hover:to-pink-700"
+          } text-white rounded-lg font-medium disabled:opacity-50 transition-all flex items-center shadow-lg hover:shadow-xl active:scale-95`}
         >
-          <Sparkles className="w-4 h-4 mr-2" />
-          AI&apos;a Sor
-          {hasReadyResults && (
+          {isLimitReached ? (
+            <AlertTriangle className="w-4 h-4 mr-2" />
+          ) : (
+            <Sparkles className="w-4 h-4 mr-2" />
+          )}
+          {isLimitReached ? t("limitReached") : "AI'a Sor"}
+          {hasReadyResults && !isLimitReached && (
             <span className="absolute -top-1 -right-1 h-5 w-5 bg-green-500 rounded-full text-xs flex items-center justify-center animate-pulse">
               {Object.values(localResults).filter((r) => r?.success).length}
             </span>
@@ -214,7 +237,9 @@ export default function AIQuickActions({
         {/* Tooltip */}
         <div className="absolute left-1/2 transform -translate-x-1/2 -bottom-8 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
           <div className="bg-gray-900 text-white text-xs py-1 px-2 rounded whitespace-nowrap">
-            AI araçlarını aç (Ctrl+I)
+            {isLimitReached
+              ? t("limitReachedMessage")
+              : "AI araçlarını aç (Ctrl+I)"}
           </div>
         </div>
       </div>
@@ -251,17 +276,81 @@ export default function AIQuickActions({
                 </button>
               </div>
 
+              {/* AI Usage Indicator */}
+              <div
+                className={`mt-4 p-3 rounded-lg ${
+                  isLimitReached
+                    ? "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800"
+                    : usagePercentage >= 80
+                      ? "bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800"
+                      : "bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800"
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Zap
+                      className={`w-4 h-4 ${
+                        isLimitReached
+                          ? "text-red-500"
+                          : usagePercentage >= 80
+                            ? "text-yellow-500"
+                            : "text-blue-500"
+                      }`}
+                    />
+                    <span
+                      className={`text-sm font-medium ${
+                        isLimitReached
+                          ? "text-red-700 dark:text-red-300"
+                          : usagePercentage >= 80
+                            ? "text-yellow-700 dark:text-yellow-300"
+                            : "text-blue-700 dark:text-blue-300"
+                      }`}
+                    >
+                      {t("dailyUsage")}
+                    </span>
+                  </div>
+                  <span
+                    className={`text-sm ${
+                      isLimitReached
+                        ? "text-red-600 dark:text-red-400"
+                        : usagePercentage >= 80
+                          ? "text-yellow-600 dark:text-yellow-400"
+                          : "text-blue-600 dark:text-blue-400"
+                    }`}
+                  >
+                    {remainingWords} / {DAILY_WORD_LIMIT} {t("words")}
+                  </span>
+                </div>
+                <div className="h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full transition-all ${
+                      isLimitReached
+                        ? "bg-red-500"
+                        : usagePercentage >= 80
+                          ? "bg-yellow-500"
+                          : "bg-blue-500"
+                    }`}
+                    style={{ width: `${Math.min(usagePercentage, 100)}%` }}
+                  />
+                </div>
+                {isLimitReached && (
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-2">
+                    {t("limitReachedMessage")}
+                  </p>
+                )}
+              </div>
+
               {/* Content Stats */}
-              <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
+              <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      İçerik Durumu
+                      Icerik Durumu
                     </div>
                     <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                       {content.length >= 100
-                        ? "✅ Analiz için hazır"
-                        : "⚠️ Daha fazla yazın"}
+                        ? "Analiz icin hazir"
+                        : "Daha fazla yazin"}
                     </div>
                   </div>
                   <div className="flex items-center space-x-3">
@@ -331,7 +420,8 @@ export default function AIQuickActions({
                     const isDisabled =
                       content.length < worker.minLength ||
                       isProcessing ||
-                      isImageBlocked;
+                      isImageBlocked ||
+                      isLimitReached;
 
                     return (
                       <div

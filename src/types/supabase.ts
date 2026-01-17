@@ -8,6 +8,10 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[];
 
+export type ThemePreference = "light" | "dark" | "system";
+export type ReadingMode = "comfortable" | "compact";
+export type LocalePreference = "tr" | "en" | "de";
+
 export interface Database {
   public: {
     Tables: {
@@ -33,6 +37,64 @@ export interface Database {
           email?: string;
           full_name?: string | null;
           avatar_url?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      user_preferences: {
+        Row: {
+          id: string;
+          user_id: string;
+          theme: ThemePreference;
+          language: LocalePreference;
+          reading_mode: ReadingMode;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          theme?: ThemePreference;
+          language?: LocalePreference;
+          reading_mode?: ReadingMode;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          theme?: ThemePreference;
+          language?: LocalePreference;
+          reading_mode?: ReadingMode;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      ai_daily_usage: {
+        Row: {
+          id: string;
+          user_id: string;
+          date: string;
+          words_used: number;
+          requests_count: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          date: string;
+          words_used?: number;
+          requests_count?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          date?: string;
+          words_used?: number;
+          requests_count?: number;
           created_at?: string;
           updated_at?: string;
         };

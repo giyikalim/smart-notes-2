@@ -1,6 +1,7 @@
 "use client";
 
 import AIQuickActions from "@/components/ai/AIQuickActions";
+import { AIUsageIndicator } from "@/components/ai/AIUsageIndicator";
 import MilkdownEditor from "@/components/editor/MilkdownEditor";
 import {
   AI_WORKERS,
@@ -9,6 +10,7 @@ import {
   getAIOrganize,
   getAISuggestion,
 } from "@/lib/ai-helper";
+import { countWords, useAIUsage } from "@/lib/ai-usage";
 import { useAuth } from "@/lib/auth";
 import {
   CATEGORIES,
@@ -45,6 +47,9 @@ export default function FullscreenEditPage() {
   const queryClient = useQueryClient();
   const noteId = params.id as string;
   const locale = useLocale();
+
+  // AI Usage tracking
+  const { isLimitReached, canUseAI, trackUsage } = useAIUsage();
 
   const [content, setContent] = useState("");
   const [title, setTitle] = useState("");
@@ -137,13 +142,27 @@ export default function FullscreenEditPage() {
       return;
     }
 
+    // Use clean content + OCR for AI
+    const ocrTexts = uploadedImages.map((img) => img.ocrText);
+    const contentForAI = getContentForAI(content, ocrTexts);
+
+    // Check AI usage limit
+    const wordCount = countWords(contentForAI);
+    if (isLimitReached || !canUseAI(wordCount)) {
+      toast.error("Günlük AI limitiniz doldu. Yarın tekrar deneyin.", {
+        duration: 3000,
+        id: "ai-limit-reached",
+      });
+      return;
+    }
+
     setIsCategoryLoading(true);
     try {
-      // Use clean content + OCR for AI
-      const ocrTexts = uploadedImages.map((img) => img.ocrText);
-      const contentForAI = getContentForAI(content, ocrTexts);
       const result = await getAICategory(contentForAI);
       if (result.success && result.data) {
+        // Track AI usage after successful call
+        await trackUsage(wordCount);
+
         setCategory(result.data.category);
         setSubcategory(result.data.subcategory);
         setCategoryModified(true);
@@ -303,6 +322,8 @@ export default function FullscreenEditPage() {
         }
       }
 
+      result.content = contentForAI;
+
       return result || { success: false, error: "No result" };
     } catch (error) {
       console.error(`AI ${workerId} error:`, error);
@@ -448,17 +469,23 @@ export default function FullscreenEditPage() {
           "user",
         );
       } else if (!note?.category && content.length >= 20) {
-        // Generate category for notes that don't have any
+        // Generate category for notes that don't have any (only if AI limit allows)
         const ocrTexts = referencedImages.map((img) => img.ocrText);
         const contentForAI = getContentForAI(content, ocrTexts);
-        const catResult = await getAICategory(contentForAI);
-        if (catResult.success && catResult.data) {
-          await noteAPI.updateNoteCategory(
-            noteId,
-            catResult.data.category,
-            catResult.data.subcategory,
-            "ai",
-          );
+        const wordCount = countWords(contentForAI);
+
+        // Only generate category if within AI limits
+        if (!isLimitReached && canUseAI(wordCount)) {
+          const catResult = await getAICategory(contentForAI);
+          if (catResult.success && catResult.data) {
+            await trackUsage(wordCount);
+            await noteAPI.updateNoteCategory(
+              noteId,
+              catResult.data.category,
+              catResult.data.subcategory,
+              "ai",
+            );
+          }
         }
       }
 
@@ -968,6 +995,11 @@ export default function FullscreenEditPage() {
                 <h2 className="text-lg font-semibold mb-6 text-blue-600 dark:text-blue-400">
                   🔍 Analiz Paneli
                 </h2>
+
+                {/* AI Usage Status */}
+                <div className="mb-6">
+                  <AIUsageIndicator variant="full" />
+                </div>
 
                 {/* AI Results Summary */}
                 {Object.keys(aiResults).length > 0 && (

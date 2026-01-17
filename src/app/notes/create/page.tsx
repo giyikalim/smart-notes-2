@@ -1,11 +1,13 @@
 "use client";
 
+import { AIUsageIndicator } from "@/components/ai/AIUsageIndicator";
 import MilkdownEditor from "@/components/editor/MilkdownEditor";
 import {
   AICategoryResult,
   getAICategory,
   getAISuggestion,
 } from "@/lib/ai-helper";
+import { countWords, useAIUsage } from "@/lib/ai-usage";
 import { useAuth } from "@/lib/auth";
 import {
   CATEGORIES,
@@ -48,6 +50,9 @@ export default function CreateNotePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAILoading, setIsAILoading] = useState(false);
   const [isCategoryLoading, setIsCategoryLoading] = useState(false);
+
+  // AI Usage tracking
+  const { isLimitReached, canUseAI, trackUsage, remainingWords } = useAIUsage();
 
   // Kullanıcının girdiği başlık ve özet
   const [userTitle, setUserTitle] = useState("");
@@ -96,6 +101,16 @@ export default function CreateNotePage() {
         return;
       }
 
+      // Check AI usage limit before calling AI
+      const wordCount = countWords(contentForAI);
+      if (isLimitReached || !canUseAI(wordCount)) {
+        toast.error("Günlük AI limitiniz doldu. Yarın tekrar deneyin.", {
+          duration: 3000,
+          id: "ai-limit-reached",
+        });
+        return;
+      }
+
       setIsAILoading(true);
       setIsCategoryLoading(true);
 
@@ -107,6 +122,9 @@ export default function CreateNotePage() {
         ]);
 
         if (suggestion.success) {
+          // Track AI usage after successful call
+          await trackUsage(wordCount);
+
           const aiSuggestion = {
             suggestedTitle: suggestion.title,
             suggestedSummary: suggestion.summary,
@@ -138,7 +156,7 @@ export default function CreateNotePage() {
         setIsCategoryLoading(false);
       }
     }, 1500),
-    [userTitle, userSummary, uploadedImages],
+    [userTitle, userSummary, uploadedImages, isLimitReached, canUseAI, trackUsage],
   );
 
   // Handle content change from editor
@@ -393,8 +411,11 @@ export default function CreateNotePage() {
               </div>
 
               <div className="p-4 space-y-4">
+                {/* AI Usage Status */}
+                <AIUsageIndicator variant="full" />
+
                 {/* AI Status */}
-                {totalContentLength < 30 && (
+                {totalContentLength < 30 && !isLimitReached && (
                   <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg text-amber-700 dark:text-amber-400 text-xs">
                     <AlertCircle className="w-4 h-4 shrink-0" />
                     <span>AI analizi için en az 30 karakter yazın</span>

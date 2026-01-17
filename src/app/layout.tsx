@@ -1,4 +1,6 @@
+import { AIUsageProvider } from "@/lib/ai-usage";
 import { AuthProvider } from "@/lib/auth";
+import { PreferencesProvider } from "@/lib/preferences";
 import { ReactQueryProvider } from "@/lib/react-query";
 import type { Metadata, Viewport } from "next";
 import { NextIntlClientProvider } from "next-intl";
@@ -44,8 +46,12 @@ export default async function RootLayout({
           <NextIntlClientProvider messages={messages}>
             <ReactQueryProvider>
               <AuthProvider>
-                {children}
-                <Toaster position="top-right" />
+                <PreferencesProvider>
+                  <AIUsageProvider>
+                    {children}
+                    <Toaster position="top-right" />
+                  </AIUsageProvider>
+                </PreferencesProvider>
               </AuthProvider>
             </ReactQueryProvider>
           </NextIntlClientProvider>
