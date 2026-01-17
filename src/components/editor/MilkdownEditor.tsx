@@ -1,26 +1,33 @@
 // components/editor/MilkdownEditor.tsx
 "use client";
 
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+// Milkdown imports
+import { Editor, rootCtx, defaultValueCtx, editorViewCtx } from "@milkdown/core";
+import { commonmark } from "@milkdown/preset-commonmark";
+import { gfm } from "@milkdown/preset-gfm";
+import { Milkdown, MilkdownProvider, useEditor, useInstance } from "@milkdown/react";
+import { listener, listenerCtx } from "@milkdown/plugin-listener";
+import { replaceAll, getMarkdown } from "@milkdown/utils";
+import { history } from "@milkdown/plugin-history";
+import { clipboard } from "@milkdown/plugin-clipboard";
+
+// Local imports
 import { useImageUpload } from "@/hooks/useImageUpload";
+import { UploadedImage } from "@/lib/image-uploader";
+import { NoteImage } from "@/lib/elasticsearch-client";
 import { hasImages } from "@/lib/image-processor";
-import { UploadedImage, getSignedUrl } from "@/lib/image-uploader";
-import {
-  Bold,
-  Code,
-  Edit3,
-  Eye,
-  Heading1,
-  Heading2,
-  Image,
-  Italic,
-  Link as LinkIcon,
-  List,
-  ListOrdered,
-  Loader2,
-  Quote,
-  X,
-} from "lucide-react";
-import { useCallback, useRef, useState } from "react";
+import { ImageRegistry, createImageRegistry } from "./imageRegistry";
+import { transformForEditor, transformForStorage } from "./contentTransformer";
+import { handleFileInputUpload } from "./milkdownUploader";
+import { MilkdownToolbar } from "./MilkdownToolbar";
+import { getSignedUrl } from "@/lib/image-uploader";
+
+// Import styles
+import "@/styles/milkdown.css";
+
+import { Image as ImageIcon, Loader2, X } from "lucide-react";
 
 interface MilkdownEditorProps {
   value: string;
@@ -30,413 +37,340 @@ interface MilkdownEditorProps {
   disabled?: boolean;
   onImageUpload?: (image: UploadedImage) => void;
   className?: string;
+  images?: NoteImage[]; // Existing images for loading signed URLs
 }
 
-interface UploadedImageInfo {
-  id: string;
-  previewUrl: string;
-  ocrText: string | null;
-  uploading?: boolean;
-}
-
-export default function MilkdownEditor({
+function MilkdownEditorInner({
   value,
   onChange,
-  placeholder = "Notunuzu buraya yazın...",
+  placeholder = "Notunuzu buraya yazin...",
   minHeight = "300px",
   disabled = false,
   onImageUpload,
   className = "",
+  images = [],
 }: MilkdownEditorProps) {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isPreview, setIsPreview] = useState(false);
-  const [uploadedImages, setUploadedImages] = useState<
-    Map<string, UploadedImageInfo>
-  >(new Map());
+  const { state: uploadState, upload: uploadImage, reset: resetUpload } = useImageUpload();
+  const registryRef = useRef<ImageRegistry>(createImageRegistry());
+  const [editorReady, setEditorReady] = useState(false);
+  const [initialContent, setInitialContent] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const lastValueRef = useRef(value);
+  const isInternalChangeRef = useRef(false);
 
-  const { state: uploadState, upload, reset: resetUpload } = useImageUpload();
+  // Use refs for callbacks and value to prevent editor reinitialization
+  const onChangeRef = useRef(onChange);
+  const onImageUploadRef = useRef(onImageUpload);
+  const valueRef = useRef(value);
+  const uploadImageRef = useRef(uploadImage);
 
-  // Toolbar action helper
-  const insertText = useCallback(
-    (before: string, after: string = "", placeholder: string = "") => {
-      const textarea = textareaRef.current;
-      if (!textarea) return;
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
 
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
-      const selectedText = value.substring(start, end) || placeholder;
+  useEffect(() => {
+    onImageUploadRef.current = onImageUpload;
+  }, [onImageUpload]);
 
-      const newText =
-        value.substring(0, start) +
-        before +
-        selectedText +
-        after +
-        value.substring(end);
+  useEffect(() => {
+    valueRef.current = value;
+  }, [value]);
 
-      onChange(newText);
+  useEffect(() => {
+    uploadImageRef.current = uploadImage;
+  }, [uploadImage]);
 
-      // Cursor pozisyonunu ayarla
-      setTimeout(() => {
-        textarea.focus();
-        const newCursorPos = start + before.length + selectedText.length;
-        textarea.setSelectionRange(newCursorPos, newCursorPos);
-      }, 0);
-    },
-    [value, onChange],
+
+  // Build storage path map from images prop
+  const imageStoragePaths = useMemo(() => {
+    const map = new Map<string, string>();
+    images.forEach((img) => {
+      if (img.storagePaths?.medium) {
+        map.set(img.id, img.storagePaths.medium);
+      }
+    });
+    return map;
+  }, [images]);
+
+  // Transform initial content on mount
+  useEffect(() => {
+    let mounted = true;
+
+    async function prepareContent() {
+      setIsLoading(true);
+      try {
+        const transformed = await transformForEditor(
+          value,
+          imageStoragePaths,
+          registryRef.current
+        );
+        if (mounted) {
+          setInitialContent(transformed);
+          lastValueRef.current = value;
+        }
+      } catch (error) {
+        console.error("Failed to transform content:", error);
+        if (mounted) {
+          setInitialContent(value);
+        }
+      } finally {
+        if (mounted) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    prepareContent();
+
+    return () => {
+      mounted = false;
+    };
+  }, []); // Only on mount
+
+  // Editor configuration - without upload plugin, we handle paste manually
+  const { get } = useEditor(
+    (root) =>
+      Editor.make()
+        .config((ctx) => {
+          ctx.set(rootCtx, root);
+          if (initialContent !== null) {
+            ctx.set(defaultValueCtx, initialContent);
+          }
+
+          // Configure listener for content changes
+          ctx.get(listenerCtx).markdownUpdated((ctx, markdown, prevMarkdown) => {
+            if (markdown !== prevMarkdown) {
+              // Prevent unexpected content clearing (e.g., when browser tab becomes inactive/active)
+              // Only block if document is hidden (tab not active) - allow user to delete content normally
+              if (!markdown.trim() && valueRef.current.trim() && document.hidden) {
+                return;
+              }
+              isInternalChangeRef.current = true;
+              // Transform back to storage format before calling onChange
+              const storageMarkdown = transformForStorage(
+                markdown,
+                registryRef.current
+              );
+              onChangeRef.current(storageMarkdown);
+              lastValueRef.current = storageMarkdown;
+            }
+          });
+        })
+        .use(commonmark)
+        .use(gfm)
+        .use(history)
+        .use(clipboard)
+        .use(listener),
+    [initialContent]
   );
 
-  // Toolbar actions
-  const toolbarActions = {
-    bold: () => insertText("**", "**", "kalın metin"),
-    italic: () => insertText("*", "*", "italik metin"),
-    h1: () => insertText("# ", "", "Başlık"),
-    h2: () => insertText("## ", "", "Alt Başlık"),
-    list: () => insertText("- ", "", "liste öğesi"),
-    orderedList: () => insertText("1. ", "", "liste öğesi"),
-    quote: () => insertText("> ", "", "alıntı"),
-    code: () => insertText("`", "`", "kod"),
-    link: () => insertText("[", "](url)", "link metni"),
-  };
+  // Get editor instance for programmatic control
+  const [loading, getInstance] = useInstance();
 
-  // Image upload handler
-  const handleImageSelect = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
+  // Handle external value changes (controlled component)
+  useEffect(() => {
+    if (loading || !editorReady) return;
 
-      // Reset file input
-      e.target.value = "";
+    // Skip if this was an internal change
+    if (isInternalChangeRef.current) {
+      isInternalChangeRef.current = false;
+      return;
+    }
 
-      const result = await upload(file);
-      if (result) {
-        // Get signed URL for preview
-        let previewUrl = "";
-        try {
-          previewUrl = await getSignedUrl(result.storagePaths.thumb);
-        } catch (err) {
-          console.error("Failed to get preview URL:", err);
+    // External value changed - update editor
+    if (value !== lastValueRef.current) {
+      const editor = getInstance();
+      if (editor) {
+        transformForEditor(value, imageStoragePaths, registryRef.current)
+          .then((transformed) => {
+            editor.action(replaceAll(transformed));
+            lastValueRef.current = value;
+          })
+          .catch(console.error);
+      }
+    }
+  }, [value, loading, editorReady, imageStoragePaths, getInstance]);
+
+  // Mark editor as ready after mount
+  useEffect(() => {
+    if (!loading && initialContent !== null) {
+      setEditorReady(true);
+    }
+  }, [loading, initialContent]);
+
+  // Restore editor content when tab becomes visible again
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && editorReady && !loading) {
+        // Small delay to let any pending editor events settle
+        setTimeout(() => {
+          try {
+            const editor = getInstance();
+            if (!editor) return;
+
+            // Try to get current editor content safely
+            let currentMarkdown = '';
+            try {
+              currentMarkdown = editor.action(getMarkdown());
+            } catch {
+              // Editor context not ready, skip this check
+              return;
+            }
+
+            // If editor is empty but we have content in value, restore it
+            if (!currentMarkdown.trim() && valueRef.current.trim()) {
+              transformForEditor(valueRef.current, imageStoragePaths, registryRef.current)
+                .then((transformed) => {
+                  isInternalChangeRef.current = true;
+                  editor.action(replaceAll(transformed));
+                  lastValueRef.current = valueRef.current;
+                })
+                .catch(console.error);
+            }
+          } catch (error) {
+            // Editor not ready or other error, ignore
+            console.debug('Editor visibility restore skipped:', error);
+          }
+        }, 100);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [editorReady, loading, imageStoragePaths, getInstance]);
+
+  // Insert image into editor at cursor position
+  const insertImageIntoEditor = useCallback((signedUrl: string, altText: string = "uploaded image") => {
+    const editor = getInstance();
+    if (editor) {
+      editor.action((ctx) => {
+        const view = ctx.get(editorViewCtx);
+        if (view) {
+          const { state, dispatch } = view;
+          const { from } = state.selection;
+
+          // Create image node
+          const imageNode = state.schema.nodes.image?.create({
+            src: signedUrl,
+            alt: altText,
+          });
+
+          if (imageNode) {
+            const tr = state.tr.insert(from, imageNode);
+            dispatch(tr);
+          }
         }
+      });
+    }
+  }, [getInstance]);
 
-        // Add to uploaded images map
-        setUploadedImages((prev) =>
-          new Map(prev).set(result.id, {
-            id: result.id,
-            previewUrl,
-            ocrText: result.ocrText,
-          }),
-        );
+  // Handle file upload (from toolbar or paste)
+  const handleImageUpload = useCallback(
+    async (file: File) => {
+      if (!file.type.startsWith("image/")) return;
 
-        // Insert placeholder into content
-        const placeholder = `\n\n{{img:${result.id}}}\n\n`;
-        const textarea = textareaRef.current;
-        if (textarea) {
-          const cursorPos = textarea.selectionStart;
-          const newValue =
-            value.substring(0, cursorPos) +
-            placeholder +
-            value.substring(cursorPos);
-          onChange(newValue);
+      try {
+        const result = await uploadImageRef.current(file);
+
+        if (result) {
+          const signedUrl = await getSignedUrl(result.storagePaths.medium);
+          registryRef.current.register(result.id, signedUrl, result.storagePaths.medium);
+
+          // Insert image into editor
+          insertImageIntoEditor(signedUrl, result.originalName || "uploaded image");
+
+          // Notify parent
+          onImageUploadRef.current?.(result);
         }
-
-        // Callback
-        onImageUpload?.(result);
+      } catch (error) {
+        console.error("Image upload failed:", error);
+      } finally {
         resetUpload();
       }
     },
-    [upload, value, onChange, onImageUpload, resetUpload],
+    [insertImageIntoEditor, resetUpload]
   );
 
-  // Drag & drop handler
-  const handleDrop = useCallback(
-    async (e: React.DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-
-      const file = e.dataTransfer.files[0];
-      if (file && file.type.startsWith("image/")) {
-        const result = await upload(file);
-        if (result) {
-          // Get signed URL for preview
-          let previewUrl = "";
-          try {
-            previewUrl = await getSignedUrl(result.storagePaths.thumb);
-          } catch (err) {
-            console.error("Failed to get preview URL:", err);
-          }
-
-          setUploadedImages((prev) =>
-            new Map(prev).set(result.id, {
-              id: result.id,
-              previewUrl,
-              ocrText: result.ocrText,
-            }),
-          );
-
-          const placeholder = `\n\n{{img:${result.id}}}\n\n`;
-          onChange(value + placeholder);
-          onImageUpload?.(result);
-          resetUpload();
-        }
-      }
+  // Handle file input for manual upload (toolbar button)
+  const handleFileSelect = useCallback(
+    async (file: File) => {
+      await handleImageUpload(file);
     },
-    [upload, value, onChange, onImageUpload, resetUpload],
+    [handleImageUpload]
   );
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-  }, []);
-
-  // Paste handler for images
+  // Handle paste event for images
   const handlePaste = useCallback(
     async (e: React.ClipboardEvent) => {
-      const items = e.clipboardData.items;
+      const items = e.clipboardData?.items;
+      if (!items) return;
 
-      for (const item of items) {
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
         if (item.type.startsWith("image/")) {
           e.preventDefault();
           const file = item.getAsFile();
           if (file) {
-            const result = await upload(file);
-            if (result) {
-              // Get signed URL for preview
-              let previewUrl = "";
-              try {
-                previewUrl = await getSignedUrl(result.storagePaths.thumb);
-              } catch (err) {
-                console.error("Failed to get preview URL:", err);
-              }
-
-              setUploadedImages((prev) =>
-                new Map(prev).set(result.id, {
-                  id: result.id,
-                  previewUrl,
-                  ocrText: result.ocrText,
-                }),
-              );
-
-              const placeholder = `{{img:${result.id}}}`;
-              const textarea = textareaRef.current;
-              if (textarea) {
-                const cursorPos = textarea.selectionStart;
-                const newValue =
-                  value.substring(0, cursorPos) +
-                  placeholder +
-                  value.substring(cursorPos);
-                onChange(newValue);
-              }
-              onImageUpload?.(result);
-              resetUpload();
-            }
+            await handleImageUpload(file);
           }
-          break;
+          return;
         }
       }
     },
-    [upload, value, onChange, onImageUpload, resetUpload],
+    [handleImageUpload]
   );
 
-  // Render preview with images
-  const renderPreview = useCallback(() => {
-    let previewContent = value;
+  // Handle drop event for images
+  const handleDrop = useCallback(
+    async (e: React.DragEvent) => {
+      const files = e.dataTransfer?.files;
+      if (!files || files.length === 0) return;
 
-    // Replace image placeholders with actual images
-    previewContent = previewContent.replace(
-      /\{\{img:([a-f0-9-]+)\}\}/g,
-      (match, imageId) => {
-        const imageInfo = uploadedImages.get(imageId);
-        if (imageInfo) {
-          return `![image](${imageInfo.previewUrl})`;
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file.type.startsWith("image/")) {
+          e.preventDefault();
+          await handleImageUpload(file);
+          return;
         }
-        return match;
-      },
-    );
-
-    // Simple markdown to HTML (basic)
-    return previewContent
-      .replace(
-        /^### (.*$)/gm,
-        '<h3 class="text-lg font-semibold mt-4 mb-2">$1</h3>',
-      )
-      .replace(
-        /^## (.*$)/gm,
-        '<h2 class="text-xl font-semibold mt-4 mb-2">$1</h2>',
-      )
-      .replace(/^# (.*$)/gm, '<h1 class="text-2xl font-bold mt-4 mb-2">$1</h1>')
-      .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-      .replace(/\*(.*?)\*/g, "<em>$1</em>")
-      .replace(
-        /`(.*?)`/g,
-        '<code class="bg-gray-100 dark:bg-gray-800 px-1 rounded">$1</code>',
-      )
-      .replace(
-        /!\[.*?\]\((.*?)\)/g,
-        '<img src="$1" class="max-w-full h-auto rounded-lg my-2" />',
-      )
-      .replace(
-        /\[(.*?)\]\((.*?)\)/g,
-        '<a href="$2" class="text-blue-600 hover:underline">$1</a>',
-      )
-      .replace(
-        /^> (.*$)/gm,
-        '<blockquote class="border-l-4 border-gray-300 pl-4 italic my-2">$1</blockquote>',
-      )
-      .replace(/^- (.*$)/gm, '<li class="ml-4">$1</li>')
-      .replace(/^\d+\. (.*$)/gm, '<li class="ml-4 list-decimal">$1</li>')
-      .replace(/\n/g, "<br />");
-  }, [value, uploadedImages]);
+      }
+    },
+    [handleImageUpload]
+  );
 
   const hasImagesInContent = hasImages(value);
 
+  // Loading state
+  if (isLoading || initialContent === null) {
+    return (
+      <div
+        className={`border border-gray-300 dark:border-gray-700 rounded-lg overflow-hidden ${className}`}
+      >
+        <div
+          className="flex items-center justify-center bg-white dark:bg-gray-900"
+          style={{ minHeight }}
+        >
+          <div className="flex items-center gap-2 text-gray-500">
+            <Loader2 className="w-5 h-5 animate-spin" />
+            <span>Editor yukleniyor...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
-      className={`border border-gray-300 dark:border-gray-700 rounded-lg overflow-hidden ${className}`}
+      className={`milkdown-editor-wrapper border border-gray-300 dark:border-gray-700 rounded-lg overflow-hidden ${className}`}
     >
       {/* Toolbar */}
-      <div className="flex items-center gap-1 p-2 bg-gray-50 dark:bg-gray-800 border-b border-gray-300 dark:border-gray-700 flex-wrap">
-        <button
-          type="button"
-          onClick={toolbarActions.bold}
-          disabled={disabled || isPreview}
-          className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded disabled:opacity-50"
-          title="Kalın (Ctrl+B)"
-        >
-          <Bold className="w-4 h-4" />
-        </button>
-        <button
-          type="button"
-          onClick={toolbarActions.italic}
-          disabled={disabled || isPreview}
-          className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded disabled:opacity-50"
-          title="İtalik (Ctrl+I)"
-        >
-          <Italic className="w-4 h-4" />
-        </button>
-
-        <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1" />
-
-        <button
-          type="button"
-          onClick={toolbarActions.h1}
-          disabled={disabled || isPreview}
-          className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded disabled:opacity-50"
-          title="Başlık 1"
-        >
-          <Heading1 className="w-4 h-4" />
-        </button>
-        <button
-          type="button"
-          onClick={toolbarActions.h2}
-          disabled={disabled || isPreview}
-          className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded disabled:opacity-50"
-          title="Başlık 2"
-        >
-          <Heading2 className="w-4 h-4" />
-        </button>
-
-        <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1" />
-
-        <button
-          type="button"
-          onClick={toolbarActions.list}
-          disabled={disabled || isPreview}
-          className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded disabled:opacity-50"
-          title="Liste"
-        >
-          <List className="w-4 h-4" />
-        </button>
-        <button
-          type="button"
-          onClick={toolbarActions.orderedList}
-          disabled={disabled || isPreview}
-          className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded disabled:opacity-50"
-          title="Numaralı Liste"
-        >
-          <ListOrdered className="w-4 h-4" />
-        </button>
-
-        <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1" />
-
-        <button
-          type="button"
-          onClick={toolbarActions.quote}
-          disabled={disabled || isPreview}
-          className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded disabled:opacity-50"
-          title="Alıntı"
-        >
-          <Quote className="w-4 h-4" />
-        </button>
-        <button
-          type="button"
-          onClick={toolbarActions.code}
-          disabled={disabled || isPreview}
-          className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded disabled:opacity-50"
-          title="Kod"
-        >
-          <Code className="w-4 h-4" />
-        </button>
-        <button
-          type="button"
-          onClick={toolbarActions.link}
-          disabled={disabled || isPreview}
-          className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded disabled:opacity-50"
-          title="Link"
-        >
-          <LinkIcon className="w-4 h-4" />
-        </button>
-
-        <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1" />
-
-        {/* Image upload button */}
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={
-            disabled ||
-            isPreview ||
-            uploadState.stage === "processing" ||
-            uploadState.stage === "uploading"
-          }
-          className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded disabled:opacity-50 text-blue-600 dark:text-blue-400"
-          title="Resim Ekle"
-        >
-          {uploadState.stage === "processing" ||
-          uploadState.stage === "uploading" ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <Image className="w-4 h-4" />
-          )}
-        </button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp,image/gif"
-          onChange={handleImageSelect}
-          className="hidden"
-        />
-
-        {/* Spacer */}
-        <div className="flex-1" />
-
-        {/* Preview toggle */}
-        <button
-          type="button"
-          onClick={() => setIsPreview(!isPreview)}
-          className={`p-2 rounded transition-colors ${
-            isPreview
-              ? "bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400"
-              : "hover:bg-gray-200 dark:hover:bg-gray-700"
-          }`}
-          title={isPreview ? "Düzenle" : "Önizleme"}
-        >
-          {isPreview ? (
-            <Edit3 className="w-4 h-4" />
-          ) : (
-            <Eye className="w-4 h-4" />
-          )}
-        </button>
-      </div>
+      <MilkdownToolbar
+        disabled={disabled}
+        uploadState={uploadState}
+        onFileSelect={handleFileSelect}
+      />
 
       {/* Upload progress */}
       {(uploadState.stage === "processing" ||
@@ -471,43 +405,49 @@ export default function MilkdownEditor({
         </div>
       )}
 
-      {/* Editor / Preview */}
-      {isPreview ? (
-        <div
-          className="p-4 prose dark:prose-invert max-w-none overflow-auto"
-          style={{ minHeight }}
-          dangerouslySetInnerHTML={{ __html: renderPreview() }}
-        />
-      ) : (
-        <textarea
-          ref={textareaRef}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onPaste={handlePaste}
-          onDrop={handleDrop}
-          onDragOver={handleDragOver}
-          placeholder={placeholder}
-          disabled={disabled}
-          className="w-full p-4 resize-none focus:outline-none bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-500"
-          style={{ minHeight }}
-        />
-      )}
+      {/* Editor */}
+      <div
+        className={`milkdown-container prose dark:prose-invert max-w-none p-4 bg-white dark:bg-gray-900 ${
+          disabled ? "opacity-50 pointer-events-none" : ""
+        }`}
+        style={{ minHeight }}
+        onPaste={handlePaste}
+        onDrop={handleDrop}
+        onDragOver={(e) => e.preventDefault()}
+      >
+        {/* Placeholder - only show when empty */}
+        {!value.trim() && (
+          <div className="absolute top-4 left-4 text-gray-400 pointer-events-none select-none">
+            {placeholder}
+          </div>
+        )}
+        <Milkdown />
+      </div>
 
       {/* Image info panel */}
       {hasImagesInContent && (
         <div className="px-4 py-2 bg-purple-50 dark:bg-purple-900/20 border-t border-purple-200 dark:border-purple-800">
           <div className="flex items-center gap-2 text-sm text-purple-700 dark:text-purple-300">
-            <Image className="w-4 h-4" />
-            <span>Bu notta resim var - AI içerik düzenleme devre dışı</span>
+            <ImageIcon className="w-4 h-4" />
+            <span>Bu notta resim var - AI icerik duzenleme devre disi</span>
           </div>
         </div>
       )}
 
       {/* Footer info */}
       <div className="px-4 py-2 bg-gray-50 dark:bg-gray-800 border-t border-gray-300 dark:border-gray-700 flex items-center justify-between text-xs text-gray-500">
-        <span>Markdown destekli • Resim: sürükle-bırak veya yapıştır</span>
+        <span>Markdown destekli - Resim: surukle-birak veya yapistir</span>
         <span>{value.length} karakter</span>
       </div>
     </div>
+  );
+}
+
+// Wrap with MilkdownProvider
+export default function MilkdownEditor(props: MilkdownEditorProps) {
+  return (
+    <MilkdownProvider>
+      <MilkdownEditorInner {...props} />
+    </MilkdownProvider>
   );
 }

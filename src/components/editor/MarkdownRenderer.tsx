@@ -259,6 +259,8 @@ function parseMarkdown(text: string): string {
       .replace(/\*\*\*(.*?)\*\*\*/g, "<strong><em>$1</em></strong>")
       .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
       .replace(/\*(.*?)\*/g, "<em>$1</em>")
+      // Strikethrough (GFM)
+      .replace(/~~(.*?)~~/g, '<del class="line-through text-gray-500 dark:text-gray-400">$1</del>')
       // Code
       .replace(
         /```([\s\S]*?)```/g,

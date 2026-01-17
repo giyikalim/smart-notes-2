@@ -922,6 +922,7 @@ export default function FullscreenEditPage() {
                   placeholder="Notunuzu buraya yazın... (Markdown destekli, resim ekleyebilirsiniz)"
                   minHeight="calc(100vh - 300px)"
                   disabled={isSaving}
+                  images={note?.images || []}
                 />
 
                 {isContentExpanded && (

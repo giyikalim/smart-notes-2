@@ -1,0 +1,236 @@
+/* styles/milkdown.css */
+/* Milkdown Editor Styles */
+
+/* Editor wrapper */
+.milkdown-editor-wrapper {
+  @apply relative;
+}
+
+/* Editor container */
+.milkdown-container {
+  @apply relative focus-within:outline-none;
+}
+
+/* ProseMirror editor core */
+.milkdown-container .milkdown {
+  @apply outline-none min-h-[200px];
+}
+
+.milkdown-container .milkdown .editor {
+  @apply outline-none;
+}
+
+/* Ensure proper focus styling */
+.milkdown-container .ProseMirror {
+  @apply outline-none;
+}
+
+.milkdown-container .ProseMirror:focus {
+  @apply outline-none;
+}
+
+/* Typography */
+.milkdown-container .ProseMirror {
+  @apply text-gray-900 dark:text-gray-100;
+}
+
+.milkdown-container .ProseMirror p {
+  @apply my-2 leading-relaxed;
+}
+
+.milkdown-container .ProseMirror h1 {
+  @apply text-3xl font-bold my-4 text-gray-900 dark:text-gray-100;
+}
+
+.milkdown-container .ProseMirror h2 {
+  @apply text-2xl font-bold my-3 text-gray-900 dark:text-gray-100;
+}
+
+.milkdown-container .ProseMirror h3 {
+  @apply text-xl font-bold my-2 text-gray-900 dark:text-gray-100;
+}
+
+.milkdown-container .ProseMirror h4 {
+  @apply text-lg font-semibold my-2 text-gray-900 dark:text-gray-100;
+}
+
+.milkdown-container .ProseMirror h5 {
+  @apply text-base font-semibold my-2 text-gray-900 dark:text-gray-100;
+}
+
+.milkdown-container .ProseMirror h6 {
+  @apply text-sm font-semibold my-2 text-gray-900 dark:text-gray-100;
+}
+
+/* Bold and italic */
+.milkdown-container .ProseMirror strong {
+  @apply font-bold;
+}
+
+.milkdown-container .ProseMirror em {
+  @apply italic;
+}
+
+.milkdown-container .ProseMirror s {
+  @apply line-through;
+}
+
+/* Links */
+.milkdown-container .ProseMirror a {
+  @apply text-blue-600 dark:text-blue-400 underline hover:text-blue-800 dark:hover:text-blue-300;
+}
+
+/* Lists */
+.milkdown-container .ProseMirror ul {
+  @apply list-disc list-inside my-2 pl-4;
+}
+
+.milkdown-container .ProseMirror ol {
+  @apply list-decimal list-inside my-2 pl-4;
+}
+
+.milkdown-container .ProseMirror li {
+  @apply my-1;
+}
+
+.milkdown-container .ProseMirror li > p {
+  @apply inline;
+}
+
+/* Task lists (GFM) */
+.milkdown-container .ProseMirror ul[data-type="taskList"] {
+  @apply list-none pl-0;
+}
+
+.milkdown-container .ProseMirror li[data-type="taskItem"] {
+  @apply flex items-start gap-2;
+}
+
+.milkdown-container .ProseMirror li[data-type="taskItem"] input[type="checkbox"] {
+  @apply mt-1;
+}
+
+/* Blockquotes */
+.milkdown-container .ProseMirror blockquote {
+  @apply border-l-4 border-gray-300 dark:border-gray-600 pl-4 my-4 italic text-gray-600 dark:text-gray-400;
+}
+
+/* Code - inline */
+.milkdown-container .ProseMirror code {
+  @apply bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-sm font-mono text-pink-600 dark:text-pink-400;
+}
+
+/* Code blocks */
+.milkdown-container .ProseMirror pre {
+  @apply bg-gray-100 dark:bg-gray-800 p-4 rounded-lg my-4 overflow-x-auto;
+}
+
+.milkdown-container .ProseMirror pre code {
+  @apply bg-transparent p-0 text-gray-800 dark:text-gray-200;
+}
+
+/* Horizontal rule */
+.milkdown-container .ProseMirror hr {
+  @apply border-t border-gray-300 dark:border-gray-600 my-6;
+}
+
+/* Images */
+.milkdown-container .ProseMirror img {
+  @apply max-w-full h-auto rounded-lg my-4 mx-auto block;
+  max-height: 400px;
+  object-fit: contain;
+}
+
+.milkdown-container .ProseMirror img:hover {
+  @apply ring-2 ring-blue-400 dark:ring-blue-500;
+}
+
+/* Image loading state */
+.milkdown-container .ProseMirror img[src=""] {
+  @apply bg-gray-200 dark:bg-gray-700 animate-pulse;
+  min-height: 100px;
+}
+
+/* Tables (GFM) */
+.milkdown-container .ProseMirror table {
+  @apply w-full border-collapse my-4;
+}
+
+.milkdown-container .ProseMirror th {
+  @apply bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 px-4 py-2 text-left font-semibold;
+}
+
+.milkdown-container .ProseMirror td {
+  @apply border border-gray-300 dark:border-gray-600 px-4 py-2;
+}
+
+.milkdown-container .ProseMirror tr:nth-child(even) {
+  @apply bg-gray-50 dark:bg-gray-800/50;
+}
+
+/* Selection styling */
+.milkdown-container .ProseMirror ::selection {
+  @apply bg-blue-200 dark:bg-blue-800;
+}
+
+/* Drag and drop overlay */
+.milkdown-container.dragging {
+  @apply relative;
+}
+
+.milkdown-container.dragging::after {
+  content: "Drop image here";
+  @apply absolute inset-0 flex items-center justify-center bg-blue-100/80 dark:bg-blue-900/80 border-2 border-dashed border-blue-400 dark:border-blue-500 text-blue-600 dark:text-blue-300 font-medium text-lg rounded-lg;
+}
+
+/* Focus outline for accessibility */
+.milkdown-container:focus-within {
+  @apply ring-2 ring-blue-400 dark:ring-blue-500 ring-offset-2 ring-offset-white dark:ring-offset-gray-900 rounded-lg;
+}
+
+/* Hide ring when there's a border wrapper */
+.milkdown-editor-wrapper .milkdown-container:focus-within {
+  @apply ring-0 ring-offset-0;
+}
+
+.milkdown-editor-wrapper:focus-within {
+  @apply ring-2 ring-blue-400 dark:ring-blue-500;
+}
+
+/* Prose normalization */
+.milkdown-container.prose {
+  @apply max-w-none;
+}
+
+.milkdown-container.prose :where(p):not(:where([class~="not-prose"] *)) {
+  @apply my-2;
+}
+
+/* Remove default prose margins that conflict */
+.milkdown-container.prose :where(img):not(:where([class~="not-prose"] *)) {
+  @apply my-4;
+}
+
+/* Ensure proper spacing for first/last elements */
+.milkdown-container .ProseMirror > *:first-child {
+  @apply mt-0;
+}
+
+.milkdown-container .ProseMirror > *:last-child {
+  @apply mb-0;
+}
+
+/* Upload placeholder widget */
+.milkdown-upload-placeholder {
+  @apply inline-block px-3 py-1 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded text-sm animate-pulse;
+}
+
+/* Strikethrough styling */
+.milkdown-container .ProseMirror del,
+.milkdown-container .ProseMirror s,
+.milkdown-container .ProseMirror .strikethrough,
+.milkdown-container .ProseMirror [data-type="strike_through"],
+.milkdown-container .ProseMirror span[data-mark="strike_through"] {
+  text-decoration: line-through !important;
+  @apply text-gray-500 dark:text-gray-400;
+}
