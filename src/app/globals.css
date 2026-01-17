@@ -158,4 +158,113 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+
+  /* Sepia theme for reading */
+  .prose-sepia {
+    --tw-prose-body: #78716c;
+    --tw-prose-headings: #44403c;
+    --tw-prose-links: #b45309;
+    --tw-prose-bold: #44403c;
+    --tw-prose-code: #b45309;
+    --tw-prose-quotes: #57534e;
+  }
+
+  .prose-sepia p,
+  .prose-sepia li,
+  .prose-sepia span {
+    color: #44403c;
+  }
+
+  .dark .prose-sepia p,
+  .dark .prose-sepia li,
+  .dark .prose-sepia span {
+    color: #fef3c7;
+  }
+
+  .prose-sepia h1,
+  .prose-sepia h2,
+  .prose-sepia h3,
+  .prose-sepia h4,
+  .prose-sepia h5,
+  .prose-sepia h6 {
+    color: #292524;
+  }
+
+  .dark .prose-sepia h1,
+  .dark .prose-sepia h2,
+  .dark .prose-sepia h3,
+  .dark .prose-sepia h4,
+  .dark .prose-sepia h5,
+  .dark .prose-sepia h6 {
+    color: #fffbeb;
+  }
+
+  .prose-sepia a {
+    color: #b45309;
+  }
+
+  .prose-sepia a:hover {
+    color: #92400e;
+  }
+
+  .dark .prose-sepia a {
+    color: #fbbf24;
+  }
+
+  .dark .prose-sepia a:hover {
+    color: #fcd34d;
+  }
+
+  .prose-sepia blockquote {
+    border-color: #d6d3d1;
+    color: #57534e;
+  }
+
+  .dark .prose-sepia blockquote {
+    border-color: #78716c;
+    color: #fef3c7;
+  }
+
+  .prose-sepia code {
+    background-color: #fef3c7;
+    color: #92400e;
+  }
+
+  .dark .prose-sepia code {
+    background-color: rgba(180, 83, 9, 0.3);
+    color: #fcd34d;
+  }
+
+  .prose-sepia pre {
+    background-color: #fef3c7;
+  }
+
+  .dark .prose-sepia pre {
+    background-color: rgba(180, 83, 9, 0.2);
+  }
+
+  .prose-sepia pre code {
+    background-color: transparent;
+    color: #44403c;
+  }
+
+  .dark .prose-sepia pre code {
+    color: #fef3c7;
+  }
+
+  .prose-sepia hr {
+    border-color: #d6d3d1;
+  }
+
+  .dark .prose-sepia hr {
+    border-color: #78716c;
+  }
+
+  .prose-sepia strong {
+    color: #292524;
+  }
+
+  .dark .prose-sepia strong {
+    color: #fffbeb;
+  }
 }

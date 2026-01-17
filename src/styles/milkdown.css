@@ -234,3 +234,52 @@
   text-decoration: line-through !important;
   @apply text-gray-500 dark:text-gray-400;
 }
+
+/* Sepia theme for reading */
+.prose-sepia {
+  --tw-prose-body: #78716c;
+  --tw-prose-headings: #44403c;
+  --tw-prose-links: #b45309;
+  --tw-prose-bold: #44403c;
+  --tw-prose-code: #b45309;
+  --tw-prose-quotes: #57534e;
+}
+
+.prose-sepia p,
+.prose-sepia li,
+.prose-sepia span {
+  @apply text-stone-700 dark:text-amber-100;
+}
+
+.prose-sepia h1,
+.prose-sepia h2,
+.prose-sepia h3,
+.prose-sepia h4,
+.prose-sepia h5,
+.prose-sepia h6 {
+  @apply text-stone-800 dark:text-amber-50;
+}
+
+.prose-sepia a {
+  @apply text-amber-700 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-300;
+}
+
+.prose-sepia blockquote {
+  @apply border-amber-300 dark:border-amber-700 text-stone-600 dark:text-amber-200;
+}
+
+.prose-sepia code {
+  @apply bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200;
+}
+
+.prose-sepia pre {
+  @apply bg-amber-100 dark:bg-amber-900/30;
+}
+
+.prose-sepia pre code {
+  @apply bg-transparent text-stone-800 dark:text-amber-100;
+}
+
+.prose-sepia hr {
+  @apply border-amber-300 dark:border-amber-700;
+}

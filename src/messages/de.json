@@ -52,7 +52,6 @@
     "advancedSearch": "Erweiterte Suche",
     "discover": "Entdecken",
     "searchPlaceholder": "Notizen durchsuchen... (Strg+K zum Fokussieren)",
-    "searchHint": "Volltextsuche mit Elasticsearch",
     "advancedSearchResults": "Erweiterte Suchergebnisse",
     "notesFiltered": "{count} Notizen gefiltert",
     "clear": "Löschen"

@@ -4,11 +4,29 @@ import MarkdownRenderer from "@/components/editor/MarkdownRenderer";
 import { useAuth } from "@/lib/auth";
 import { Note, noteAPI } from "@/lib/elasticsearch-client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Image as ImageIcon } from "lucide-react";
+import {
+  Image as ImageIcon,
+  BookOpen,
+  Rows3,
+  Sun,
+  Coffee,
+  Clock,
+  ArrowUp,
+} from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
+
+type ReadingMode = "comfortable" | "compact";
+type ThemeMode = "normal" | "sepia";
+
+// Calculate estimated reading time (average 200 words per minute)
+function getReadingTime(wordCount: number): string {
+  const minutes = Math.ceil(wordCount / 200);
+  if (minutes < 1) return "< 1 dk";
+  return `${minutes} dk`;
+}
 
 export default function NoteDetailPage() {
   const { user } = useAuth();
@@ -18,6 +36,41 @@ export default function NoteDetailPage() {
   const [similarNotes, setSimilarNotes] = useState<Note[]>([]);
   const [isLoadingSimilar, setIsLoadingSimilar] = useState(false);
   const queryClient = useQueryClient();
+
+  // Reading preferences
+  const [readingMode, setReadingMode] = useState<ReadingMode>("comfortable");
+  const [themeMode, setThemeMode] = useState<ThemeMode>("normal");
+  const [showBackToTop, setShowBackToTop] = useState(false);
+
+  // Load preferences from localStorage
+  useEffect(() => {
+    const savedReadingMode = localStorage.getItem("noteReadingMode") as ReadingMode;
+    const savedThemeMode = localStorage.getItem("noteThemeMode") as ThemeMode;
+    if (savedReadingMode) setReadingMode(savedReadingMode);
+    if (savedThemeMode) setThemeMode(savedThemeMode);
+  }, []);
+
+  // Save preferences to localStorage
+  useEffect(() => {
+    localStorage.setItem("noteReadingMode", readingMode);
+  }, [readingMode]);
+
+  useEffect(() => {
+    localStorage.setItem("noteThemeMode", themeMode);
+  }, [themeMode]);
+
+  // Handle scroll for back to top button
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowBackToTop(window.scrollY > 400);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   useEffect(() => {
     if (noteId) {
@@ -214,35 +267,111 @@ export default function NoteDetailPage() {
               <div className="p-8">
                 {/* Content - EN SON */}
                 <div className="border-gray-200 dark:border-gray-700">
-                  <div className="flex items-center justify-between mb-4">
+                  {/* Reading Controls Bar */}
+                  <div className="flex flex-wrap items-center justify-between gap-3 mb-4 p-3 bg-gray-100 dark:bg-gray-700/50 rounded-lg">
                     <div className="flex items-center gap-3">
-                      <div className="p-2 bg-gray-100 dark:bg-gray-700 rounded-lg">
-                        <span className="text-gray-600 dark:text-gray-400 text-xl">
-                          📖
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                        <span className="text-sm text-gray-600 dark:text-gray-400">
+                          {getReadingTime(note.metadata?.wordCount || 0)} okuma
                         </span>
                       </div>
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
-                          Not İçeriği
-                        </h3>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          Tam metin{" "}
-                          {note.hasImages && `• ${note.imageCount} resim`}
-                        </p>
+                      {note.hasImages && (
+                        <div className="flex items-center gap-1 text-sm text-purple-600 dark:text-purple-400">
+                          <ImageIcon className="w-4 h-4" />
+                          {note.imageCount} resim
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {/* Theme Toggle */}
+                      <div className="flex items-center bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 p-1">
+                        <button
+                          onClick={() => setThemeMode("normal")}
+                          className={`p-1.5 rounded transition-colors ${
+                            themeMode === "normal"
+                              ? "bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-gray-100"
+                              : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                          }`}
+                          title="Normal tema"
+                        >
+                          <Sun className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setThemeMode("sepia")}
+                          className={`p-1.5 rounded transition-colors ${
+                            themeMode === "sepia"
+                              ? "bg-amber-200 dark:bg-amber-700 text-amber-900 dark:text-amber-100"
+                              : "text-gray-500 dark:text-gray-400 hover:text-amber-600 dark:hover:text-amber-400"
+                          }`}
+                          title="Sepia tema (göz yorgunluğunu azaltır)"
+                        >
+                          <Coffee className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      {/* Reading Mode Toggle */}
+                      <div className="flex items-center bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 p-1">
+                        <button
+                          onClick={() => setReadingMode("comfortable")}
+                          className={`p-1.5 rounded transition-colors ${
+                            readingMode === "comfortable"
+                              ? "bg-blue-200 dark:bg-blue-700 text-blue-900 dark:text-blue-100"
+                              : "text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
+                          }`}
+                          title="Rahat okuma modu"
+                        >
+                          <BookOpen className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setReadingMode("compact")}
+                          className={`p-1.5 rounded transition-colors ${
+                            readingMode === "compact"
+                              ? "bg-blue-200 dark:bg-blue-700 text-blue-900 dark:text-blue-100"
+                              : "text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
+                          }`}
+                          title="Kompakt mod (daha fazla içerik)"
+                        >
+                          <Rows3 className="w-4 h-4" />
+                        </button>
                       </div>
                     </div>
-                    {note.hasImages && (
-                      <div className="flex items-center gap-1 text-sm text-purple-600 dark:text-purple-400">
-                        <ImageIcon className="w-4 h-4" />
-                        {note.imageCount} resim
-                      </div>
-                    )}
                   </div>
-                  <div className="text-gray-700 dark:text-gray-300 text-lg leading-relaxed bg-gray-50 dark:bg-gray-900/50 p-5 rounded-xl">
-                    <MarkdownRenderer
-                      content={note.content}
-                      images={note.images}
-                    />
+
+                  {/* Content Area */}
+                  <div
+                    className={`rounded-xl transition-all ${
+                      themeMode === "sepia"
+                        ? "bg-amber-50 dark:bg-amber-900/20"
+                        : "bg-gray-50 dark:bg-gray-900/50"
+                    } ${
+                      readingMode === "comfortable"
+                        ? "p-6 text-lg leading-relaxed"
+                        : "p-4 text-base leading-normal"
+                    }`}
+                  >
+                    <div
+                      className={`${
+                        themeMode === "sepia"
+                          ? "text-amber-900 dark:text-amber-100"
+                          : "text-gray-700 dark:text-gray-300"
+                      } ${
+                        readingMode === "comfortable"
+                          ? "max-w-prose mx-auto"
+                          : "max-w-none"
+                      }`}
+                    >
+                      <MarkdownRenderer
+                        content={note.content}
+                        images={note.images}
+                        className={
+                          themeMode === "sepia"
+                            ? "prose-sepia"
+                            : ""
+                        }
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -593,6 +722,17 @@ export default function NoteDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Back to Top Button */}
+      {showBackToTop && (
+        <button
+          onClick={scrollToTop}
+          className="fixed bottom-6 right-6 p-3 bg-blue-600 dark:bg-blue-700 text-white rounded-full shadow-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition-all hover:scale-110 z-50"
+          title="Başa dön"
+        >
+          <ArrowUp className="w-5 h-5" />
+        </button>
+      )}
     </div>
   );
 }

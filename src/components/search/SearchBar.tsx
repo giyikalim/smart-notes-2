@@ -19,7 +19,7 @@ const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>(
       autoFocus = false,
       openAdvanceSearchModal,
     }: SearchBarProps,
-    ref
+    ref,
   ) {
     const [query, setQuery] = useState(initialQuery);
     const router = useRouter();
@@ -36,7 +36,7 @@ const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>(
           onSearch(query.trim());
         } else {
           router.push(
-            `/dashboard/search?q=${encodeURIComponent(query.trim())}`
+            `/dashboard/search?q=${encodeURIComponent(query.trim())}`,
           );
         }
       }
@@ -134,7 +134,7 @@ const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>(
         </div>
 
         <div className="mt-2 text-xs text-gray-500 dark:text-gray-400 flex items-center justify-between">
-          <span className="hidden sm:inline">📝 {t("searchHint")}</span>
+          <span className="hidden sm:inline"></span>
           <div className="flex items-center gap-2">
             <span className="hidden md:inline text-xs px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded">
               Ctrl+K
@@ -150,7 +150,7 @@ const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>(
         </div>
       </form>
     );
-  }
+  },
 );
 
 export default SearchBar;

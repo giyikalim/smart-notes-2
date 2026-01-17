@@ -52,7 +52,6 @@
     "advancedSearch": "Gelişmiş Arama",
     "discover": "Keşfet",
     "searchPlaceholder": "Notlarınızda arama yapın... (Ctrl+K ile focus)",
-    "searchHint": "Elasticsearch ile tam metin arama",
     "advancedSearchResults": "Gelişmiş Arama Sonuçları",
     "notesFiltered": "{count} not filtrelendi",
     "clear": "Temizle"

@@ -3,6 +3,7 @@
 
 import { AI_WORKERS } from "@/lib/ai-helper";
 import {
+  AlertTriangle,
   CheckCircle,
   Clock,
   Pencil,
@@ -10,18 +11,17 @@ import {
   Sparkles,
   Wand2,
   X,
-  AlertTriangle,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
 interface AIQuickActionsProps {
   content: string;
   onWorkerSelect: (
-    workerId: string
+    workerId: string,
   ) => Promise<{ success: boolean; data?: any; [key: string]: any }>;
   onApplyResult: (workerId: string, result: any) => void;
   recentResults?: Record<string, any>;
-  hasImages?: boolean;  // Disable content editing if has images
+  hasImages?: boolean; // Disable content editing if has images
 }
 
 export default function AIQuickActions({
@@ -39,7 +39,7 @@ export default function AIQuickActions({
     useState<Record<string, any>>(recentResults);
 
   // Content modifying workers (disabled when hasImages)
-  const contentModifyingWorkers = ['edit', 'organize'];
+  const contentModifyingWorkers = ["edit", "organize"];
 
   // recentResults prop'u değiştiğinde localResults'u güncelle
   useEffect(() => {
@@ -315,17 +315,23 @@ export default function AIQuickActions({
                     <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg mb-4">
                       <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300 text-sm">
                         <AlertTriangle className="w-4 h-4" />
-                        <span>Bu notta resim var. İçerik düzenleme araçları devre dışı.</span>
+                        <span>
+                          Bu notta resim var. İçerik düzenleme araçları devre
+                          dışı.
+                        </span>
                       </div>
                     </div>
                   )}
-                  
+
                   {AI_WORKERS.map((worker) => {
                     const status = getWorkerStatus(worker.id);
                     const hasResult = localResults[worker.id]?.success;
-                    const isImageBlocked = hasImages && contentModifyingWorkers.includes(worker.id);
+                    const isImageBlocked =
+                      hasImages && contentModifyingWorkers.includes(worker.id);
                     const isDisabled =
-                      content.length < worker.minLength || isProcessing || isImageBlocked;
+                      content.length < worker.minLength ||
+                      isProcessing ||
+                      isImageBlocked;
 
                     return (
                       <div

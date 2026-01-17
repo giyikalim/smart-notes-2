@@ -383,9 +383,12 @@ export default function NoteList({ searchQuery = "" }: NoteListProps) {
               <div className="p-6">
                 {/* Header */}
                 <div className="flex justify-between items-start mb-3">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate pr-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-3 mb-2 min-w-0">
+                      <h3
+                        className="text-lg font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 sm:line-clamp-1"
+                        title={note.title}
+                      >
                         {note.title}
                       </h3>
 

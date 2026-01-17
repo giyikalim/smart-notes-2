@@ -52,7 +52,6 @@
     "advancedSearch": "Advanced Search",
     "discover": "Discover",
     "searchPlaceholder": "Search your notes... (Ctrl+K to focus)",
-    "searchHint": "Full-text search with Elasticsearch",
     "advancedSearchResults": "Advanced Search Results",
     "notesFiltered": "{count} notes filtered",
     "clear": "Clear"
