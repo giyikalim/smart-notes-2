@@ -1,4 +1,6 @@
 // lib/elasticsearch-client.ts - Browser/Edge için
+import { deleteImages } from "./image-uploader";
+
 const API_BASE_URL = "/api/elasticsearch";
 
 // Image metadata stored with note
@@ -801,6 +803,18 @@ class ElasticsearchNoteAPI {
     const note = await this.getNoteById(noteId);
     if (!note) {
       throw new Error("Not bulunamadı");
+    }
+
+    // Delete images from Supabase storage first
+    if (note.images && note.images.length > 0) {
+      const imageIds = note.images.map((img) => img.id);
+      try {
+        await deleteImages(note.userId, imageIds);
+        console.log(`Deleted ${imageIds.length} images for note ${noteId}`);
+      } catch (error) {
+        console.error("Failed to delete images from storage:", error);
+        // Continue with note deletion even if image deletion fails
+      }
     }
 
     const elasticId = note._id || noteId;
