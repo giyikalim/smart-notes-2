@@ -76,7 +76,8 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    if (!isLoading && user) {
+    // Only auto-focus search on desktop (screen width >= 1024px)
+    if (!isLoading && user && window.innerWidth >= 1024) {
       const timer = setTimeout(() => {
         setShouldFocusSearch(true);
       }, 100);
