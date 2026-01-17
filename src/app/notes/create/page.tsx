@@ -310,24 +310,24 @@ export default function CreateNotePage() {
     <div className="min-h-screen bg-white dark:bg-gray-900">
       {/* Header - Compact */}
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 sm:gap-4 min-w-0">
               <button
                 onClick={() => router.back()}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors shrink-0"
               >
                 <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
               </button>
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                  <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                <div className="p-1.5 sm:p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg shrink-0">
+                  <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400" />
                 </div>
-                <div>
-                  <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                <div className="min-w-0">
+                  <h1 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 truncate">
                     Yeni Not
                   </h1>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                  <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 hidden sm:block">
                     AI otomatik analiz eder
                   </p>
                 </div>
@@ -335,10 +335,10 @@ export default function CreateNotePage() {
             </div>
 
             {/* Actions in header */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
               <button
                 onClick={() => router.back()}
-                className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                className="px-3 sm:px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors hidden sm:block"
                 disabled={isSubmitting}
               >
                 İptal
@@ -346,17 +346,17 @@ export default function CreateNotePage() {
               <button
                 onClick={handleSubmit}
                 disabled={isSubmitting || !content.trim()}
-                className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed font-medium flex items-center gap-2 transition-colors"
+                className="px-3 sm:px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed font-medium flex items-center gap-1.5 sm:gap-2 transition-colors"
               >
                 {isSubmitting ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Kaydediliyor...
+                    <span className="hidden sm:inline">Kaydediliyor...</span>
                   </>
                 ) : (
                   <>
-                    {aiSuggestions ? "AI ile Kaydet" : "Kaydet"}
-                    {uploadedImages.length > 0 && ` (${uploadedImages.length} 📷)`}
+                    {aiSuggestions ? <><span className="hidden sm:inline">AI ile</span> Kaydet</> : "Kaydet"}
+                    {uploadedImages.length > 0 && <span className="hidden sm:inline"> ({uploadedImages.length} 📷)</span>}
                   </>
                 )}
               </button>
@@ -366,8 +366,8 @@ export default function CreateNotePage() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4 lg:gap-6">
           {/* Left/Main Panel: Editor */}
           <div className="lg:col-span-8">
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">

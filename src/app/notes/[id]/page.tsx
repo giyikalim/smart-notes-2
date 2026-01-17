@@ -184,18 +184,18 @@ export default function NoteDetailPage() {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 py-8">
-      <div className="max-w-6xl mx-auto px-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 py-4 sm:py-6 lg:py-8">
+      <div className="max-w-6xl mx-auto px-3 sm:px-4 lg:px-6">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex justify-between items-start mb-4">
-            <div>
+        <div className="mb-4 sm:mb-6 lg:mb-8">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 mb-4">
+            <div className="flex-1 min-w-0">
               <Link
                 href="/dashboard"
-                className="inline-flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 mb-2"
+                className="inline-flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 mb-2 text-sm"
               >
                 <svg
-                  className="w-4 h-4 mr-2"
+                  className="w-4 h-4 mr-1.5"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -209,22 +209,22 @@ export default function NoteDetailPage() {
                 </svg>
                 Notlarıma Dön
               </Link>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-gray-100 break-words">
                 {note.title}
               </h1>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
               <Link
                 href={`/notes/${noteId}/edit`}
-                className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-500 dark:to-indigo-500 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 dark:hover:from-blue-600 dark:hover:to-indigo-600 transition-all font-medium shadow-sm hover:shadow-md"
+                className="px-3 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-500 dark:to-indigo-500 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 dark:hover:from-blue-600 dark:hover:to-indigo-600 transition-all font-medium shadow-sm hover:shadow-md text-sm sm:text-base"
               >
-                ✏️ Düzenle
+                ✏️ <span className="hidden sm:inline">Düzenle</span>
               </Link>
               <button
                 onClick={handleDeleteNote}
-                className="px-4 py-2 bg-red-600 dark:bg-red-700 text-white rounded-lg hover:bg-red-700 dark:hover:bg-red-800 transition-colors font-medium"
+                className="px-3 sm:px-4 py-2 bg-red-600 dark:bg-red-700 text-white rounded-lg hover:bg-red-700 dark:hover:bg-red-800 transition-colors font-medium text-sm sm:text-base"
               >
-                🗑️ Sil
+                🗑️ <span className="hidden sm:inline">Sil</span>
               </button>
             </div>
           </div>
@@ -260,11 +260,11 @@ export default function NoteDetailPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
           {/* Main Content - Sol (2/3) */}
           <div className="lg:col-span-2">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-              <div className="p-8">
+            <div className="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+              <div className="p-3 sm:p-5 lg:p-8">
                 {/* Content - EN SON */}
                 <div className="border-gray-200 dark:border-gray-700">
                   {/* Reading Controls Bar */}
@@ -341,14 +341,14 @@ export default function NoteDetailPage() {
 
                   {/* Content Area */}
                   <div
-                    className={`rounded-xl transition-all ${
+                    className={`rounded-lg sm:rounded-xl transition-all ${
                       themeMode === "sepia"
                         ? "bg-amber-50 dark:bg-amber-900/20"
                         : "bg-gray-50 dark:bg-gray-900/50"
                     } ${
                       readingMode === "comfortable"
-                        ? "p-6 text-lg leading-relaxed"
-                        : "p-4 text-base leading-normal"
+                        ? "p-3 sm:p-4 lg:p-6 text-base sm:text-lg leading-relaxed"
+                        : "p-2 sm:p-3 lg:p-4 text-sm sm:text-base leading-normal"
                     }`}
                   >
                     <div
@@ -358,7 +358,7 @@ export default function NoteDetailPage() {
                           : "text-gray-700 dark:text-gray-300"
                       } ${
                         readingMode === "comfortable"
-                          ? "max-w-prose mx-auto"
+                          ? "lg:max-w-prose lg:mx-auto"
                           : "max-w-none"
                       }`}
                     >
@@ -376,8 +376,8 @@ export default function NoteDetailPage() {
                 </div>
 
                 {/* Quick Stats at Bottom */}
-                <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="mt-4 sm:mt-6 lg:mt-8 pt-4 sm:pt-6 border-t border-gray-200 dark:border-gray-700">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                     <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
                       <div className="text-xl font-bold text-blue-700 dark:text-blue-400">
                         {note.metadata?.wordCount || 0}
@@ -420,9 +420,9 @@ export default function NoteDetailPage() {
                 </div>
 
                 {/* Benzer Notlar Bölümü - İçerikten sonra, sidebar'dan önce */}
-                <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
-                  <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                    <div className="p-6">
+                <div className="mt-4 sm:mt-6 lg:mt-8 pt-4 sm:pt-6 border-t border-gray-200 dark:border-gray-700">
+                  <div className="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                    <div className="p-3 sm:p-4 lg:p-6">
                       <div className="flex items-center justify-between mb-6">
                         <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
                           <span className="text-purple-600 dark:text-purple-400">
@@ -491,10 +491,10 @@ export default function NoteDetailPage() {
           </div>
 
           {/* Sidebar - Sağ (1/3) */}
-          <div className="lg:col-span-1 space-y-6">
+          <div className="lg:col-span-1 space-y-4 sm:space-y-6">
             {/* Category Section */}
             {note.category && (
-              <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-2xl shadow-lg p-6 border border-purple-200 dark:border-purple-800">
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-6 border border-purple-200 dark:border-purple-800">
                 <h3 className="text-sm font-medium text-purple-700 dark:text-purple-300 mb-3 flex items-center gap-2">
                   <span>📁</span>
                   Kategori
@@ -571,7 +571,7 @@ export default function NoteDetailPage() {
 
             {/* Özet - İÇERİKTEN ÖNCE */}
             {note.summary && (
-              <div className="mb-6 p-5 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">
+              <div className="p-4 sm:p-5 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 rounded-xl sm:rounded-xl">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
                     <span className="text-blue-600 dark:text-blue-400 text-xl">
@@ -595,7 +595,7 @@ export default function NoteDetailPage() {
 
             {/* Keywords - Özetten sonra */}
             {note.keywords && note.keywords.length > 0 && (
-              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+              <div className="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-6 border border-gray-200 dark:border-gray-700">
                 <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-3 flex items-center gap-2">
                   <span>🏷️</span>
                   Anahtar Kelimeler
@@ -614,7 +614,7 @@ export default function NoteDetailPage() {
             )}
 
             {/* Timeline */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+            <div className="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-6 border border-gray-200 dark:border-gray-700">
               <h3 className="font-semibold text-gray-800 dark:text-gray-200 mb-4 flex items-center gap-2">
                 <span>📅</span>
                 Zaman Çizelgesi
@@ -658,7 +658,7 @@ export default function NoteDetailPage() {
             </div>
 
             {/* Technical Info */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+            <div className="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-6 border border-gray-200 dark:border-gray-700">
               <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-6 flex items-center text-lg gap-2">
                 <span className="text-blue-700 dark:text-blue-400">🔍</span>
                 Teknik Bilgiler

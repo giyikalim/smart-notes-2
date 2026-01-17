@@ -614,31 +614,29 @@ export default function FullscreenEditPage() {
       {/* Header - Fullscreen mode'da gizle */}
       {!isContentExpanded && (
         <div className="sticky top-0 z-50 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shrink-0">
-          <div className="max-w-7xl mx-auto px-4 py-4">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div className="flex items-center space-x-4">
+          <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4">
+              <div className="flex items-center space-x-2 sm:space-x-4">
                 <button
                   onClick={handleCancel}
-                  className="px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-lg transition-colors"
+                  className="px-2 sm:px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-lg transition-colors text-sm sm:text-base"
                 >
-                  ← Geri Dön
+                  ← <span className="hidden sm:inline">Geri Dön</span>
                 </button>
                 <button
                   onClick={() => setIsSidePanelCollapsed(!isSidePanelCollapsed)}
-                  className="px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-lg transition-colors flex items-center gap-2"
+                  className="px-2 sm:px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-lg transition-colors flex items-center gap-1 sm:gap-2 text-sm sm:text-base"
                   title="Ctrl+M ile aç/kapat"
                 >
-                  {isSidePanelCollapsed
-                    ? "📋 Metaveri Göster"
-                    : "📋 Metaveri Gizle"}
+                  📋 <span className="hidden sm:inline">{isSidePanelCollapsed ? "Metaveri Göster" : "Metaveri Gizle"}</span>
                 </button>
               </div>
 
-              <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
-                <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+                <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                   <span>{wordCount} kelime</span>
-                  <span className="text-gray-400 dark:text-gray-600">•</span>
-                  <span>{content.length} karakter</span>
+                  <span className="text-gray-400 dark:text-gray-600 hidden sm:inline">•</span>
+                  <span className="hidden sm:inline">{content.length} karakter</span>
                   {note?.metadata?.aiMetadata && (
                     <>
                       <span className="text-gray-400 dark:text-gray-600">
@@ -665,17 +663,17 @@ export default function FullscreenEditPage() {
 
                 <button
                   onClick={() => setShowAnalysis(!showAnalysis)}
-                  className="px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-lg transition-colors"
+                  className="px-2 sm:px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-lg transition-colors text-sm sm:text-base"
                 >
-                  {showAnalysis ? "📊 Paneli Gizle" : "📊 Paneli Göster"}
+                  📊 <span className="hidden sm:inline">{showAnalysis ? "Paneli Gizle" : "Paneli Göster"}</span>
                 </button>
 
                 <button
                   onClick={handleSave}
                   disabled={isSaving}
-                  className="px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-500 dark:to-indigo-500 hover:from-blue-700 hover:to-indigo-700 dark:hover:from-blue-600 dark:hover:to-indigo-600 text-white rounded-lg font-medium disabled:opacity-50 transition-all shadow-sm hover:shadow-md"
+                  className="px-3 sm:px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-500 dark:to-indigo-500 hover:from-blue-700 hover:to-indigo-700 dark:hover:from-blue-600 dark:hover:to-indigo-600 text-white rounded-lg font-medium disabled:opacity-50 transition-all shadow-sm hover:shadow-md text-sm sm:text-base"
                 >
-                  {isSaving ? "Kaydediliyor..." : "💾 Kaydet"}
+                  {isSaving ? "..." : "💾"}<span className="hidden sm:inline"> {isSaving ? "Kaydediliyor" : "Kaydet"}</span>
                 </button>
               </div>
             </div>
