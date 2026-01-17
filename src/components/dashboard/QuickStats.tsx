@@ -21,15 +21,15 @@ export default function QuickStats({ userId }: QuickStatsProps) {
 
   if (isLoading) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 sm:p-6 border border-gray-200 dark:border-gray-700">
-        <h3 className="font-semibold text-gray-800 dark:text-gray-100 mb-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg sm:rounded-xl shadow-sm p-3 sm:p-4 lg:p-6 border border-gray-200 dark:border-gray-700">
+        <h3 className="font-semibold text-gray-800 dark:text-gray-100 mb-3 sm:mb-4 text-sm sm:text-base">
           📊 {t("totalNotes")}
         </h3>
-        <div className="space-y-3 sm:space-y-4">
-          {[1, 2, 3, 4].map((i) => (
+        <div className="space-y-2 sm:space-y-3">
+          {[1, 2, 3].map((i) => (
             <div
               key={i}
-              className="h-12 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg"
+              className="h-10 sm:h-12 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg"
             />
           ))}
         </div>
@@ -68,20 +68,20 @@ export default function QuickStats({ userId }: QuickStatsProps) {
   ];
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 sm:p-6 border border-gray-200 dark:border-gray-700">
-      <h3 className="font-semibold text-gray-800 dark:text-gray-100 mb-4">
+    <div className="bg-white dark:bg-gray-800 rounded-lg sm:rounded-xl shadow-sm p-3 sm:p-4 lg:p-6 border border-gray-200 dark:border-gray-700">
+      <h3 className="font-semibold text-gray-800 dark:text-gray-100 mb-3 sm:mb-4 text-sm sm:text-base">
         📊 {t("totalNotes")}
       </h3>
 
-      <div className="space-y-3">
+      <div className="space-y-2 sm:space-y-3">
         {statCards.map((card) => (
           <div
             key={card.id}
-            className={`flex justify-between items-center p-3 ${card.bgColor} rounded-lg transition-all hover:scale-[1.02]`}
+            className={`flex justify-between items-center p-2 sm:p-3 ${card.bgColor} rounded-lg transition-all hover:scale-[1.02]`}
           >
             <div>
               <div
-                className={`text-xl sm:text-2xl font-bold ${card.textColor}`}
+                className={`text-lg sm:text-xl lg:text-2xl font-bold ${card.textColor}`}
               >
                 {card.value}
               </div>
@@ -89,7 +89,7 @@ export default function QuickStats({ userId }: QuickStatsProps) {
                 {card.title}
               </div>
             </div>
-            <div className={`text-xl sm:text-2xl ${card.iconColor}`}>
+            <div className={`text-lg sm:text-xl lg:text-2xl ${card.iconColor}`}>
               {card.icon}
             </div>
           </div>
@@ -97,7 +97,7 @@ export default function QuickStats({ userId }: QuickStatsProps) {
       </div>
 
       {stats?.lastUpdated && (
-        <div className="mt-4 sm:mt-6 pt-3 sm:pt-4 border-t border-gray-200 dark:border-gray-700">
+        <div className="mt-3 sm:mt-4 lg:mt-6 pt-2 sm:pt-3 lg:pt-4 border-t border-gray-200 dark:border-gray-700">
           <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
             {new Date(stats.lastUpdated).toLocaleTimeString(locale, {
               hour: "2-digit",

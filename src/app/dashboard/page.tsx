@@ -16,7 +16,7 @@ import {
   Note,
   noteAPI,
 } from "@/lib/elasticsearch-client";
-import { Layers, Menu, Rocket, Search, X } from "lucide-react";
+import { Layers, Menu, Plus, Rocket, Search, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -209,12 +209,12 @@ export default function DashboardPage() {
         )}
       </header>
 
-      <main className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
+      <main className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-2 sm:py-4 lg:py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-2 sm:gap-4 lg:gap-6">
           {/* Left Sidebar - Quick Stats */}
           <div className="lg:col-span-1 order-2 lg:order-1">
             {/* Quick Actions */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 sm:p-6 mb-4 sm:mb-6">
+            <div className="bg-white dark:bg-gray-800 rounded-lg sm:rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-3 sm:p-4 lg:p-6 mb-3 sm:mb-4 lg:mb-6">
               <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4">
                 {t("dashboard.quickActions")}
               </h3>
@@ -262,9 +262,9 @@ export default function DashboardPage() {
 
           {/* Main Content */}
           <div className="lg:col-span-3 order-1 lg:order-2">
-            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+            <div className="bg-white dark:bg-gray-800 rounded-lg sm:rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
               {showAdvancedResults && (
-                <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/30">
+                <div className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/30">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                     <div className="flex items-center gap-3">
                       <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-100">
@@ -290,7 +290,7 @@ export default function DashboardPage() {
                 </div>
               )}
 
-              <div className="p-4 sm:p-6">
+              <div className="p-2 sm:p-4 lg:p-6">
                 {showAdvancedResults && advancedSearchData ? (
                   <AdvancedSearchResults
                     notes={advancedSearchData.notes}
@@ -316,6 +316,15 @@ export default function DashboardPage() {
           userId={user.id}
         />
       )}
+
+      {/* Mobile Floating Action Button */}
+      <Link
+        href="/notes/create"
+        className="lg:hidden fixed bottom-6 right-4 z-50 w-14 h-14 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full shadow-lg flex items-center justify-center hover:from-blue-700 hover:to-indigo-700 active:scale-95 transition-all"
+        aria-label="Yeni Not Oluştur"
+      >
+        <Plus className="w-7 h-7" />
+      </Link>
     </div>
   );
 }

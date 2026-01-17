@@ -275,21 +275,20 @@ export default function NoteList({ searchQuery = "" }: NoteListProps) {
 
   if (isLoading && !allNotes.length) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-2 sm:space-y-4">
         {[1, 2, 3].map((i) => (
           <div
             key={i}
-            className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 animate-pulse"
+            className="bg-white dark:bg-gray-800 rounded-lg sm:rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-4 lg:p-6 animate-pulse"
           >
-            <div className="flex justify-between items-start mb-4">
+            <div className="flex justify-between items-start mb-2 sm:mb-4">
               <div className="space-y-2 flex-1">
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
-                <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/4"></div>
+                <div className="h-3 sm:h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+                <div className="h-2 sm:h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/4"></div>
               </div>
-              <div className="h-8 w-8 bg-gray-200 dark:bg-gray-700 rounded"></div>
             </div>
-            <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-full mb-2"></div>
-            <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-2/3"></div>
+            <div className="h-2 sm:h-3 bg-gray-200 dark:bg-gray-700 rounded w-full mb-2"></div>
+            <div className="h-2 sm:h-3 bg-gray-200 dark:bg-gray-700 rounded w-2/3"></div>
           </div>
         ))}
       </div>
@@ -346,18 +345,18 @@ export default function NoteList({ searchQuery = "" }: NoteListProps) {
 
   return (
     <>
-      <div className="space-y-4">
+      <div className="space-y-2 sm:space-y-3 lg:space-y-4">
         {/* Stats */}
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+        <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-4 mb-3 sm:mb-6">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+            <h2 className="text-base sm:text-lg lg:text-xl font-semibold text-gray-900 dark:text-gray-100">
               {searchQuery
-                ? `"${searchQuery}" için Arama Sonuçları`
-                : "Tüm Notlarım"}
+                ? `"${searchQuery}" için Sonuçlar`
+                : "Notlarım"}
             </h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400 flex items-center">
-              <FileText className="w-4 h-4 mr-1" />
-              {allNotes.length} not • Elasticsearch ile sıralanmıştır
+            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 flex items-center">
+              <FileText className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+              {allNotes.length} not
             </p>
           </div>
 
@@ -390,31 +389,31 @@ export default function NoteList({ searchQuery = "" }: NoteListProps) {
           return (
             <div
               key={`${note.id}-${index}`}
-              className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm border transition-all duration-200 hover:shadow-md cursor-pointer group ${
+              className={`bg-white dark:bg-gray-800 rounded-lg sm:rounded-xl shadow-sm border transition-all duration-200 hover:shadow-md cursor-pointer group ${
                 isSelected
                   ? "ring-2 ring-blue-500 dark:ring-blue-400 border-blue-300 dark:border-blue-600"
                   : "border-gray-200 dark:border-gray-700"
               }`}
               onClick={() => handleNoteClick(note)}
             >
-              <div className="p-6">
+              <div className="p-3 sm:p-4 lg:p-6">
                 {/* Header */}
-                <div className="flex justify-between items-start mb-3">
+                <div className="flex justify-between items-start mb-2 sm:mb-3">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-2 min-w-0">
+                    <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2 min-w-0">
                       <h3
-                        className="text-lg font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 sm:line-clamp-1"
+                        className="text-sm sm:text-base lg:text-lg font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 sm:line-clamp-1"
                         title={note.title}
                       >
                         {note.title}
                       </h3>
 
-                      {/* Relevance Score */}
-                      {renderRelevanceStars(note.relevanceScore)}
+                      {/* Relevance Score - hide on mobile */}
+                      <span className="hidden sm:flex">{renderRelevanceStars(note.relevanceScore)}</span>
                     </div>
 
                     {/* Tags and Status */}
-                    <div className="flex flex-wrap items-center gap-2 mb-3">
+                    <div className="flex flex-wrap items-center gap-1 sm:gap-2 mb-2 sm:mb-3">
                       {/* Category Badge */}
                       {note.category ? (
                         <div className="flex items-center gap-1">
@@ -494,33 +493,28 @@ export default function NoteList({ searchQuery = "" }: NoteListProps) {
                 {renderHighlightedContent(note)}
 
                 {/* Footer */}
-                <div className="flex justify-between items-center mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-                  <div className="flex items-center space-x-4">
-                    <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
-                      <Clock className="w-4 h-4 mr-1" />
+                <div className="flex flex-wrap justify-between items-center mt-2 sm:mt-4 pt-2 sm:pt-4 border-t border-gray-100 dark:border-gray-700 gap-2">
+                  <div className="flex items-center flex-wrap gap-2 sm:gap-4">
+                    <div className="flex items-center text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+                      <Clock className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
                       {formatDate(note.createdAt)}
                     </div>
 
-                    <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
-                      <FileText className="w-4 h-4 mr-1" />
-                      {note.metadata?.wordCount || 0} kelime
+                    <div className="flex items-center text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+                      <FileText className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                      {note.metadata?.wordCount || 0}
                     </div>
 
                     {note.metadata?.sentiment !== undefined && (
-                      <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                      <div className="hidden sm:flex items-center text-sm text-gray-500 dark:text-gray-400">
                         {getSentimentIcon(note.metadata.sentiment)}
-                        {note.metadata.sentiment > 0.3
-                          ? "Pozitif"
-                          : note.metadata.sentiment < -0.3
-                            ? "Negatif"
-                            : "Nötr"}
                       </div>
                     )}
                   </div>
 
-                  <div className="text-xs text-gray-400 dark:text-gray-500 flex items-center">
+                  <div className="hidden sm:flex text-xs text-gray-400 dark:text-gray-500 items-center">
                     <Info className="w-3 h-3 mr-1" />
-                    ID: {note.id.substring(0, 8)}...
+                    {note.id.substring(0, 8)}
                   </div>
                 </div>
               </div>
