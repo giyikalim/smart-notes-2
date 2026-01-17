@@ -2,21 +2,20 @@
 "use client";
 
 import { editorViewCtx } from "@milkdown/core";
-import { useInstance } from "@milkdown/react";
-import { callCommand } from "@milkdown/utils";
 import {
-  toggleStrongCommand,
-  toggleEmphasisCommand,
-  wrapInBlockquoteCommand,
   insertHrCommand,
+  toggleEmphasisCommand,
+  toggleInlineCodeCommand,
+  toggleStrongCommand,
+  updateLinkCommand,
+  wrapInBlockquoteCommand,
   wrapInBulletListCommand,
   wrapInOrderedListCommand,
-  toggleInlineCodeCommand,
-  createCodeBlockCommand,
-  updateLinkCommand,
 } from "@milkdown/preset-commonmark";
 import { toggleStrikethroughCommand } from "@milkdown/preset-gfm";
-import { setBlockType, toggleMark } from "@milkdown/prose/commands";
+import { setBlockType } from "@milkdown/prose/commands";
+import { useInstance } from "@milkdown/react";
+import { callCommand } from "@milkdown/utils";
 import {
   Bold,
   Code,
@@ -60,12 +59,12 @@ export function MilkdownToolbar({
 
   // Run a Milkdown command
   const runCommand = useCallback(
-    (command: ReturnType<typeof toggleStrongCommand>) => {
+    (commandKey: any) => {
       if (loading || disabled) return;
       const editor = getInstance();
-      editor?.action(callCommand(command.key));
+      editor?.action(callCommand(commandKey));
     },
-    [loading, disabled, getInstance]
+    [loading, disabled, getInstance],
   );
 
   // Toggle strikethrough using Milkdown command
@@ -95,7 +94,7 @@ export function MilkdownToolbar({
         }
       });
     },
-    [loading, disabled, getInstance]
+    [loading, disabled, getInstance],
   );
 
   // Handle list insertion using Milkdown commands
@@ -111,7 +110,7 @@ export function MilkdownToolbar({
         editor.action(callCommand(wrapInBulletListCommand.key));
       }
     },
-    [loading, disabled, getInstance]
+    [loading, disabled, getInstance],
   );
 
   // Handle code - toggle inline code using Milkdown command
@@ -155,7 +154,7 @@ export function MilkdownToolbar({
       {/* Text formatting */}
       <button
         type="button"
-        onClick={() => runCommand(toggleStrongCommand)}
+        onClick={() => runCommand(toggleStrongCommand.key)}
         disabled={disabled || loading}
         className={buttonClass}
         title="Kalin (Ctrl+B)"
@@ -164,7 +163,7 @@ export function MilkdownToolbar({
       </button>
       <button
         type="button"
-        onClick={() => runCommand(toggleEmphasisCommand)}
+        onClick={() => runCommand(toggleEmphasisCommand.key)}
         disabled={disabled || loading}
         className={buttonClass}
         title="Italik (Ctrl+I)"
@@ -239,7 +238,7 @@ export function MilkdownToolbar({
       {/* Other formatting */}
       <button
         type="button"
-        onClick={() => runCommand(wrapInBlockquoteCommand)}
+        onClick={() => runCommand(wrapInBlockquoteCommand.key)}
         disabled={disabled || loading}
         className={buttonClass}
         title="Alinti"
@@ -266,7 +265,7 @@ export function MilkdownToolbar({
       </button>
       <button
         type="button"
-        onClick={() => runCommand(insertHrCommand)}
+        onClick={() => runCommand(insertHrCommand.key)}
         disabled={disabled || loading}
         className={buttonClass}
         title="Yatay cizgi"

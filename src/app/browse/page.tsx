@@ -96,25 +96,27 @@ export default function BrowsePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-purple-50 dark:from-gray-900 dark:to-gray-800">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-700 dark:to-pink-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => router.push("/dashboard")}
-                className="p-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors"
-              >
-                <ArrowLeft className="w-5 h-5 text-white" />
-              </button>
+    <div className="min-h-screen bg-white dark:bg-gray-900">
+      {/* Header - Compact */}
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => router.push("/dashboard")}
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            </button>
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                <FolderOpen className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+              </div>
               <div>
-                <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-                  <FolderOpen className="w-7 h-7" />
+                <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                   Notları Keşfet
                 </h1>
-                <p className="text-purple-100 mt-1">
-                  Kategorilere göre notlarınızı görüntüleyin
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Kategorilere göre görüntüle
                 </p>
               </div>
             </div>
@@ -122,37 +124,7 @@ export default function BrowsePage() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* İstatistikler */}
-        {statistics && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <StatCard
-              icon={<FileText className="w-5 h-5" />}
-              label="Toplam Not"
-              value={statistics.totalNotes}
-              color="blue"
-            />
-            <StatCard
-              icon={<FolderOpen className="w-5 h-5" />}
-              label="Kategori"
-              value={statistics.totalCategories}
-              color="purple"
-            />
-            <StatCard
-              icon={<TrendingUp className="w-5 h-5" />}
-              label="Kategorize"
-              value={`%${statistics.coveragePercentage}`}
-              color="green"
-            />
-            <StatCard
-              icon={<Clock className="w-5 h-5" />}
-              label="Bu Hafta"
-              value={statistics.recentlyCategorized}
-              color="orange"
-            />
-          </div>
-        )}
-
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Breadcrumb */}
         <div className="bg-white dark:bg-gray-800 rounded-xl p-4 mb-6 shadow-sm border border-gray-200 dark:border-gray-700">
           <nav className="flex items-center gap-2 text-sm flex-wrap">
@@ -202,27 +174,27 @@ export default function BrowsePage() {
             <Loader2 className="w-8 h-8 text-purple-600 animate-spin" />
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Sol Panel: Kategoriler */}
-            <div className="lg:col-span-1">
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-                <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-                  <h2 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+            <div className="lg:col-span-3">
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden sticky top-4">
+                <div className="p-3 border-b border-gray-200 dark:border-gray-700">
+                  <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                     {!currentCategory ? (
                       <>
-                        <BarChart3 className="w-5 h-5 text-purple-600" />
-                        Ana Kategoriler
+                        <BarChart3 className="w-4 h-4 text-purple-600" />
+                        Kategoriler
                       </>
                     ) : (
                       <>
-                        <Tag className="w-5 h-5 text-purple-600" />
+                        <Tag className="w-4 h-4 text-purple-600" />
                         Alt Kategoriler
                       </>
                     )}
                   </h2>
                 </div>
 
-                <div className="p-2 max-h-[500px] overflow-y-auto">
+                <div className="p-2 max-h-[calc(100vh-250px)] overflow-y-auto">
                   {!currentCategory ? (
                     // Ana kategoriler
                     categories.length > 0 ? (
@@ -280,17 +252,17 @@ export default function BrowsePage() {
               </div>
             </div>
 
-            {/* Sağ Panel: Notlar */}
-            <div className="lg:col-span-2">
+            {/* Orta Panel: Notlar */}
+            <div className="lg:col-span-6">
               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-                <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                  <h2 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                    <FileText className="w-5 h-5 text-purple-600" />
+                <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                  <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-purple-600" />
                     {currentCategory ? (
                       <>
                         Notlar
-                        <span className="text-sm font-normal text-gray-500">
-                          ({totalNotes} not)
+                        <span className="text-xs font-normal text-gray-500">
+                          ({totalNotes})
                         </span>
                       </>
                     ) : (
@@ -302,8 +274,8 @@ export default function BrowsePage() {
                 <div className="p-4">
                   {!currentCategory ? (
                     <div className="text-center py-12">
-                      <FolderOpen className="w-16 h-16 mx-auto text-gray-300 dark:text-gray-600 mb-4" />
-                      <p className="text-gray-500 dark:text-gray-400">
+                      <FolderOpen className="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-3" />
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
                         Sol panelden bir kategori seçin
                       </p>
                     </div>
@@ -320,19 +292,60 @@ export default function BrowsePage() {
                     </div>
                   ) : (
                     <div className="text-center py-12">
-                      <Search className="w-16 h-16 mx-auto text-gray-300 dark:text-gray-600 mb-4" />
-                      <p className="text-gray-500 dark:text-gray-400">
+                      <Search className="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-3" />
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
                         Bu kategoride henüz not yok
                       </p>
                       <Link
                         href="/notes/create"
-                        className="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                        className="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm"
                       >
                         + Yeni Not Oluştur
                       </Link>
                     </div>
                   )}
                 </div>
+              </div>
+            </div>
+
+            {/* Sağ Panel: İstatistikler */}
+            <div className="lg:col-span-3">
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden sticky top-4">
+                <div className="p-3 border-b border-gray-200 dark:border-gray-700">
+                  <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4 text-purple-600" />
+                    İstatistikler
+                  </h2>
+                </div>
+
+                {statistics && (
+                  <div className="p-3 space-y-3">
+                    <StatCard
+                      icon={<FileText className="w-4 h-4" />}
+                      label="Toplam Not"
+                      value={statistics.totalNotes}
+                      color="blue"
+                    />
+                    <StatCard
+                      icon={<FolderOpen className="w-4 h-4" />}
+                      label="Kategori"
+                      value={statistics.totalCategories}
+                      color="purple"
+                    />
+                    <StatCard
+                      icon={<TrendingUp className="w-4 h-4" />}
+                      label="Kategorize"
+                      value={`%${statistics.coveragePercentage}`}
+                      color="green"
+                    />
+                    <StatCard
+                      icon={<Clock className="w-4 h-4" />}
+                      label="Bu Hafta"
+                      value={statistics.recentlyCategorized}
+                      color="orange"
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -342,7 +355,7 @@ export default function BrowsePage() {
   );
 }
 
-// Stat Card Component
+// Stat Card Component - Compact for sidebar
 function StatCard({
   icon,
   label,
@@ -355,24 +368,26 @@ function StatCard({
   color: "blue" | "purple" | "green" | "orange";
 }) {
   const colors = {
-    blue: "from-blue-500 to-cyan-500 text-blue-600",
-    purple: "from-purple-500 to-pink-500 text-purple-600",
-    green: "from-green-500 to-emerald-500 text-green-600",
-    orange: "from-orange-500 to-amber-500 text-orange-600",
+    blue: "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400",
+    purple: "bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400",
+    green: "bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400",
+    orange: "bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400",
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700">
-      <div className={`inline-flex p-2 rounded-lg bg-gradient-to-r ${colors[color]} bg-opacity-10 mb-2`}>
+    <div className={`flex items-center gap-3 p-3 rounded-lg ${colors[color]}`}>
+      <div className="shrink-0">
         {icon}
       </div>
-      <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">{value}</div>
-      <div className="text-sm text-gray-500 dark:text-gray-400">{label}</div>
+      <div className="flex-1 min-w-0">
+        <div className="text-xs text-gray-500 dark:text-gray-400">{label}</div>
+        <div className="text-lg font-semibold">{value}</div>
+      </div>
     </div>
   );
 }
 
-// Category Card Component
+// Category Card Component - Compact
 function CategoryCard({
   category,
   count,
@@ -393,21 +408,21 @@ function CategoryCard({
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center gap-3 p-3 rounded-lg transition-all hover:shadow-md ${colors.bg} ${colors.border} border mb-2`}
+      className={`w-full flex items-center gap-2 p-2 rounded-lg transition-all hover:shadow-sm ${colors.bg} ${colors.border} border mb-1.5`}
     >
-      <span className="text-2xl">{categoryDef?.icon}</span>
-      <div className="flex-1 text-left">
-        <div className={`font-medium ${colors.text}`}>{name}</div>
+      <span className="text-lg">{categoryDef?.icon}</span>
+      <div className="flex-1 text-left min-w-0">
+        <div className={`text-sm font-medium truncate ${colors.text}`}>{name}</div>
         <div className="text-xs text-gray-500 dark:text-gray-400">
-          {count} not • {subcategoryCount} alt kategori
+          {count} not
         </div>
       </div>
-      <ChevronRight className={`w-5 h-5 ${colors.text}`} />
+      <ChevronRight className={`w-4 h-4 shrink-0 ${colors.text}`} />
     </button>
   );
 }
 
-// Subcategory Card Component
+// Subcategory Card Component - Compact
 function SubcategoryCard({
   subcategory,
   count,
@@ -426,19 +441,19 @@ function SubcategoryCard({
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center gap-3 p-3 rounded-lg transition-all mb-2 ${
+      className={`w-full flex items-center gap-2 p-2 rounded-lg transition-all mb-1.5 ${
         isActive
           ? "bg-purple-100 dark:bg-purple-900/30 border-purple-300 dark:border-purple-700"
           : "bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700"
       } border`}
     >
-      <Tag className={`w-4 h-4 ${isActive ? "text-purple-600" : "text-gray-500"}`} />
-      <div className="flex-1 text-left">
-        <div className={`font-medium ${isActive ? "text-purple-700 dark:text-purple-300" : "text-gray-700 dark:text-gray-300"}`}>
+      <Tag className={`w-3.5 h-3.5 shrink-0 ${isActive ? "text-purple-600" : "text-gray-500"}`} />
+      <div className="flex-1 text-left min-w-0">
+        <div className={`text-sm font-medium truncate ${isActive ? "text-purple-700 dark:text-purple-300" : "text-gray-700 dark:text-gray-300"}`}>
           {name}
         </div>
       </div>
-      <span className={`text-sm ${isActive ? "text-purple-600" : "text-gray-500"}`}>
+      <span className={`text-xs shrink-0 ${isActive ? "text-purple-600" : "text-gray-500"}`}>
         {count}
       </span>
     </button>

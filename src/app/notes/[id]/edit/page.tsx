@@ -275,6 +275,15 @@ export default function FullscreenEditPage() {
           }
           break;
 
+        case "categorize":
+          result = await getAICategory(contentForAI);
+          if (result.success && result.data) {
+            setCategory(result.data.category);
+            setSubcategory(result.data.subcategory);
+            setCategoryModified(true);
+          }
+          break;
+
         default:
           throw new Error("Geçersiz AI worker");
       }
@@ -335,6 +344,16 @@ export default function FullscreenEditPage() {
           toast.success("İçerik organize edildi!", {
             icon: "🔧",
           });
+        }
+        break;
+
+      case "categorize":
+        if (result.data) {
+          // Kategori zaten handleAIWorkerRequest'te uygulandı
+          toast.success(
+            `📁 Kategori: ${getCategoryName(result.data.category, locale)}`,
+            { icon: "🏷️" },
+          );
         }
         break;
     }

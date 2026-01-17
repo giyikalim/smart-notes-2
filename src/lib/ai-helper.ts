@@ -15,7 +15,7 @@ export interface AISuggestion {
  */
 function createFallbackSuggestion(
   text: string,
-  errorMessage: string
+  errorMessage: string,
 ): AISuggestion {
   const sentences = text.split(/[.!?]+/);
   const firstSentence = sentences[0]?.trim() || text;
@@ -214,10 +214,10 @@ export const AI_WORKERS: AIWorker[] = [
     minLength: 10,
   },
   {
-    id: "tags",
-    name: "AI Etiket Oluşturucu",
-    description: "Otomatik hiyerarşik etiketler oluştur",
-    endpoint: "/api/ai/tags",
+    id: "categorize",
+    name: "AI Kategori Belirleyicisi",
+    description: "Otomatik kategori belirler",
+    endpoint: "/api/ai/categorize",
     icon: "🏷️",
     color: "from-purple-500 to-pink-500",
     requiresText: true,
